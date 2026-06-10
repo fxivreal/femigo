@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import type { Timestamp } from "firebase/firestore"
 import { getDbInstance } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
@@ -12,7 +11,7 @@ type ContentSource = {
   id: string
   content: string
   platforms: string[]
-  createdAt: Timestamp | null
+  createdAt: any
 }
 
 type GeneratedItem = {
@@ -129,7 +128,7 @@ export default function LibraryPage() {
     }
   }
 
-  const formatDate = (timestamp: Timestamp | null) => {
+  const formatDate = (timestamp: any) => {
     if (!timestamp) return ""
     return timestamp.toDate().toLocaleDateString("en-US", {
       month: "short",
