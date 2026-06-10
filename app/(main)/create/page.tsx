@@ -5,19 +5,19 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
 import { platformPrompts } from "@/lib/prompts"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { Sparkles, FileText, Newspaper, Mail, MessageSquare, Loader2, Copy, PenLine, X } from "lucide-react"
+import { Sparkles, FileText, Loader2, Copy, PenLine, X, Link, Play } from "lucide-react"
 
-const supportedTypes = [
-  { icon: FileText, label: "Blog" },
-  { icon: Newspaper, label: "Article" },
-  { icon: Mail, label: "Newsletter" },
-  { icon: MessageSquare, label: "Transcript" },
+const inputTabs = [
+  { id: "text", label: "Text", icon: FileText },
+  { id: "article", label: "Article URL", icon: Link },
+  { id: "youtube", label: "YouTube URL", icon: Play },
 ]
 
 const platforms = [
@@ -32,7 +32,11 @@ type PlatformStatus = "idle" | "generating" | "done"
 
 export default function CreatePage() {
   const { user } = useAuth()
+  const [inputTab, setInputTab] = useState<"text" | "article" | "youtube">("text")
   const [content, setContent] = useState("")
+  const [url, setUrl] = useState("")
+  const [extractedTitle, setExtractedTitle] = useState("")
+  const [extracting, setExtracting] = useState(false)
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([])
   const [generating, setGenerating] = useState(false)
   const [platformStatuses, setPlatformStatuses] = useState<Record<string, PlatformStatus>>({})
@@ -57,9 +61,51 @@ export default function CreatePage() {
     }
   }
 
+  const handleTabChange = (tab: "text" | "article" | "youtube") => {
+    setInputTab(tab)
+    setUrl("")
+    setExtractedTitle("")
+    if (tab === "text" && !content) {
+      // keep content as-is when switching away and back
+    }
+  }
+
+  const handleExtract = async () => {
+    if (!url.trim()) {
+      toast.error("Please enter a URL.")
+      return
+    }
+
+    setExtracting(true)
+    setExtractedTitle("")
+
+    try {
+      const res = await fetch("/api/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: inputTab, url: url.trim() }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data.error || "Failed to extract content.")
+        return
+      }
+
+      setExtractedTitle(data.title || "")
+      setContent(data.content || "")
+      toast.success("Content extracted successfully!")
+    } catch {
+      toast.error("Failed to extract content. Check the URL and try again.")
+    } finally {
+      setExtracting(false)
+    }
+  }
+
   const handleGenerate = async (promptOverrides?: Record<string, string>) => {
     if (!content.trim()) {
-      toast.error("Please enter some content before saving.")
+      toast.error("Please enter or extract some content first.")
       return
     }
 
@@ -131,12 +177,19 @@ export default function CreatePage() {
       if (!promptOverrides) {
         const saveToFirestore = async () => {
           try {
-            const sourceRef = await addDoc(collection(db, "contentSources"), {
+            const sourceData: Record<string, unknown> = {
               userId: user.uid,
               content: content.trim(),
               platforms: selectedPlatforms,
+              sourceType: inputTab,
               createdAt: serverTimestamp(),
-            })
+            }
+            if (inputTab !== "text") {
+              sourceData.sourceUrl = url.trim()
+              if (extractedTitle) sourceData.sourceTitle = extractedTitle
+            }
+
+            const sourceRef = await addDoc(collection(db, "contentSources"), sourceData)
 
             await Promise.allSettled(
               data.results
@@ -187,41 +240,118 @@ export default function CreatePage() {
     <div className="p-4 sm:p-6 md:p-8 max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold mb-1">Create</h1>
       <p className="text-sm text-muted-foreground mb-6">
-        Paste your content below and generate posts across platforms.
+        Paste content, a blog URL, or a YouTube URL to generate platform-specific posts.
       </p>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Content Source</CardTitle>
-          <CardDescription>
-            Paste your blog post, article, newsletter, or transcript.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            placeholder="Paste your content here..."
-            className="min-h-[300px] sm:min-h-[400px] resize-y"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-          />
-        </CardContent>
-      </Card>
-
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        {supportedTypes.map((type) => {
-          const Icon = type.icon
+      {/* Input Type Tabs */}
+      <div className="flex border-b mb-6">
+        {inputTabs.map((tab) => {
+          const Icon = tab.icon
+          const active = inputTab === tab.id
           return (
-            <span
-              key={type.label}
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full"
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => handleTabChange(tab.id as "text" | "article" | "youtube")}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                active
+                  ? "border-[#1877F2] text-[#1877F2]"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
             >
-              <Icon className="size-3" />
-              {type.label}
-            </span>
+              <Icon className="size-4" />
+              {tab.label}
+            </button>
           )
         })}
       </div>
 
+      {/* Text Input */}
+      {inputTab === "text" && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Content Source</CardTitle>
+            <CardDescription>
+              Paste your blog post, article, newsletter, or transcript.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              placeholder="Paste your content here..."
+              className="min-h-[300px] sm:min-h-[400px] resize-y"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Article / YouTube URL Input */}
+      {(inputTab === "article" || inputTab === "youtube") && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>
+              {inputTab === "article" ? "Article URL" : "YouTube URL"}
+            </CardTitle>
+            <CardDescription>
+              {inputTab === "article"
+                ? "Enter a blog or article URL to extract its content."
+                : "Paste any YouTube video link to extract its transcript."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder={
+                  inputTab === "article"
+                    ? "https://example.com/article"
+                    : "https://www.youtube.com/watch?v=..."
+                }
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleExtract() }}
+              />
+              <Button
+                onClick={handleExtract}
+                disabled={extracting || !url.trim()}
+                className="bg-[#1877F2] hover:bg-[#1877F2]/80 text-white shrink-0"
+              >
+                {extracting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : inputTab === "youtube" ? (
+                  "Extract Transcript"
+                ) : (
+                  "Extract"
+                )}
+              </Button>
+            </div>
+            {inputTab === "youtube" && (
+              <p className="text-xs text-muted-foreground">
+                Works with <span className="font-medium">youtube.com/watch?v=...</span>,{" "}
+                <span className="font-medium">youtu.be/...</span>, and other YouTube URL formats.
+              </p>
+            )}
+            {extractedTitle && (
+              <div className="bg-muted rounded-md px-3 py-2">
+                <p className="text-xs text-muted-foreground">Title</p>
+                <p className="text-sm font-medium">{extractedTitle}</p>
+              </div>
+            )}
+            <Textarea
+              placeholder={
+                extracting
+                  ? "Extracting content..."
+                  : "Extracted content will appear here. You can edit it before generating."
+              }
+              className="min-h-[300px] sm:min-h-[400px] resize-y"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Target Platforms Card */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Target Platforms</CardTitle>
@@ -298,6 +428,7 @@ export default function CreatePage() {
         </CardContent>
       </Card>
 
+      {/* Generate Button */}
       <Button
         onClick={() => handleGenerate()}
         disabled={generating || !content.trim() || selectedPlatforms.length === 0}
