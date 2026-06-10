@@ -29,7 +29,7 @@ export function DashboardNav() {
       <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-60 md:border-r md:bg-background md:z-30">
         <div className="flex items-center gap-2 px-6 h-14 border-b shrink-0">
           <Sparkles className="size-5 text-primary" />
-          <span className="font-semibold text-base">Femigo</span>
+          <span className="font-semibold text-base text-heading">Femigo</span>
         </div>
         <nav className="flex-1 flex flex-col p-3 gap-1">
           {navItems.map((item) => {
