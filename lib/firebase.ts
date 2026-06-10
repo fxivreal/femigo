@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from "firebase/app"
-import { getAuth, connectAuthEmulator } from "firebase/auth"
-import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"
+import { getAuth, connectAuthEmulator, type Auth } from "firebase/auth"
+import { getFirestore, connectFirestoreEmulator, type Firestore } from "firebase/firestore"
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,13 +13,22 @@ const firebaseConfig = {
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
 
-// Lazy init — only in browser to prevent SSR prerender errors
-export const auth = typeof window !== "undefined" ? getAuth(app) : (null as unknown as ReturnType<typeof getAuth>)
-export const db = typeof window !== "undefined" ? getFirestore(app) : (null as unknown as ReturnType<typeof getFirestore>)
+let _auth: Auth | null = null
+let _db: Firestore | null = null
 
-if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_EMULATOR_HOST) {
-  connectAuthEmulator(auth, `http://${process.env.NEXT_PUBLIC_EMULATOR_HOST}:9099`)
-  connectFirestoreEmulator(db, process.env.NEXT_PUBLIC_EMULATOR_HOST, 8080)
+export function getAuthInstance(): Auth {
+  if (!_auth) _auth = getAuth(app)
+  return _auth
+}
+
+export function getDbInstance(): Firestore {
+  if (!_db) _db = getFirestore(app)
+  return _db
+}
+
+if (process.env.NEXT_PUBLIC_EMULATOR_HOST) {
+  connectAuthEmulator(getAuthInstance(), `http://${process.env.NEXT_PUBLIC_EMULATOR_HOST}:9099`)
+  connectFirestoreEmulator(getDbInstance(), process.env.NEXT_PUBLIC_EMULATOR_HOST, 8080)
 }
 
 export default app

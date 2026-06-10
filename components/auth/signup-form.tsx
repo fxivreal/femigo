@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { doc, setDoc, serverTimestamp } from "firebase/firestore"
-import { auth, db } from "@/lib/firebase"
+import { getAuthInstance, getDbInstance } from "@/lib/firebase"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { signupSchema, type SignupFormData } from "@/lib/validations"
@@ -32,8 +32,8 @@ export function SignupForm() {
   const onSubmit = async (data: SignupFormData) => {
     setLoading(true)
     try {
-      const cred = await createUserWithEmailAndPassword(auth, data.email, data.password)
-      await setDoc(doc(db, "users", cred.user.uid), {
+      const cred = await createUserWithEmailAndPassword(getAuthInstance(), data.email, data.password)
+      await setDoc(doc(getDbInstance(), "users", cred.user.uid), {
         name: data.name,
         email: data.email,
         createdAt: serverTimestamp(),

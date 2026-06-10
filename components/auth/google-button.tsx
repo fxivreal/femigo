@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth"
-import { auth } from "@/lib/firebase"
+import { getAuthInstance } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 
@@ -15,7 +15,7 @@ export function GoogleButton() {
     setLoading(true)
     try {
       const provider = new GoogleAuthProvider()
-      await signInWithPopup(auth, provider)
+      await signInWithPopup(getAuthInstance(), provider)
       router.push("/home")
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Something went wrong"

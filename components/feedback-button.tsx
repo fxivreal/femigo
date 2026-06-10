@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { addDoc, collection, serverTimestamp } from "firebase/firestore"
-import { db } from "@/lib/firebase"
+import { getDbInstance } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -19,7 +19,7 @@ export function FeedbackButton() {
     if (!message.trim() || !user) return
     setSending(true)
     try {
-      await addDoc(collection(db, "feedback"), {
+      await addDoc(collection(getDbInstance(), "feedback"), {
         userId: user.uid,
         email: user.email,
         message: message.trim(),

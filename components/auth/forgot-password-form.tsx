@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { sendPasswordResetEmail } from "firebase/auth"
-import { auth } from "@/lib/firebase"
+import { getAuthInstance } from "@/lib/firebase"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { forgotPasswordSchema, type ForgotPasswordFormData } from "@/lib/validations"
@@ -29,7 +29,7 @@ export function ForgotPasswordForm() {
   const onSubmit = async (data: ForgotPasswordFormData) => {
     setLoading(true)
     try {
-      await sendPasswordResetEmail(auth, data.email)
+      await sendPasswordResetEmail(getAuthInstance(), data.email)
       setSent(true)
       toast.success("Reset email sent")
     } catch (error: unknown) {

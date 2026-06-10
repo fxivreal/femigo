@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { addDoc, collection, serverTimestamp } from "firebase/firestore"
-import { db } from "@/lib/firebase"
+import { getDbInstance } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
 import { platformPrompts } from "@/lib/prompts"
 import { Input } from "@/components/ui/input"
@@ -189,6 +189,7 @@ export default function CreatePage() {
               if (extractedTitle) sourceData.sourceTitle = extractedTitle
             }
 
+            const db = getDbInstance()
             const sourceRef = await addDoc(collection(db, "contentSources"), sourceData)
 
             await Promise.allSettled(

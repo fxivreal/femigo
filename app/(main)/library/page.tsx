@@ -12,7 +12,7 @@ import {
   writeBatch,
   type Timestamp,
 } from "firebase/firestore"
-import { db } from "@/lib/firebase"
+import { getDbInstance } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -54,6 +54,7 @@ export default function LibraryPage() {
     const fetchSources = async () => {
       setLoading(true)
       try {
+        const db = getDbInstance()
         const q = query(
           collection(db, "contentSources"),
           where("userId", "==", user.uid),
@@ -79,6 +80,7 @@ export default function LibraryPage() {
     if (openContent[sourceId]) return
     setLoadingContent(sourceId)
     try {
+      const db = getDbInstance()
       const q = query(
         collection(db, "generatedContent"),
         where("sourceId", "==", sourceId)
@@ -108,6 +110,7 @@ export default function LibraryPage() {
   const handleDelete = async (source: ContentSource) => {
     setDeleting(source.id)
     try {
+      const db = getDbInstance()
       const batch = writeBatch(db)
       batch.delete(doc(db, "contentSources", source.id))
 
