@@ -13,10 +13,11 @@ const firebaseConfig = {
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
 
-export const auth = getAuth(app)
-export const db = getFirestore(app)
+// Lazy init — only in browser to prevent SSR prerender errors
+export const auth = typeof window !== "undefined" ? getAuth(app) : (null as unknown as ReturnType<typeof getAuth>)
+export const db = typeof window !== "undefined" ? getFirestore(app) : (null as unknown as ReturnType<typeof getFirestore>)
 
-if (process.env.NEXT_PUBLIC_EMULATOR_HOST) {
+if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_EMULATOR_HOST) {
   connectAuthEmulator(auth, `http://${process.env.NEXT_PUBLIC_EMULATOR_HOST}:9099`)
   connectFirestoreEmulator(db, process.env.NEXT_PUBLIC_EMULATOR_HOST, 8080)
 }

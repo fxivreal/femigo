@@ -40,7 +40,7 @@ export function FeedbackButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-20 md:bottom-6 right-4 z-40 flex items-center gap-2 text-xs font-medium text-white bg-[#1877F2] hover:bg-[#1877F2]/80 px-3 py-2 rounded-full shadow-lg transition-colors"
+        className="fixed bottom-20 md:bottom-6 right-4 z-40 flex items-center gap-2 text-xs font-medium text-white bg-[#1877F2] hover:bg-[#1877F2]/80 px-4 py-2.5 rounded-full shadow-lg transition-colors"
       >
         <MessageSquareText className="size-3.5" />
         Feedback

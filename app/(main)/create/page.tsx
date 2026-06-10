@@ -253,7 +253,7 @@ export default function CreatePage() {
               key={tab.id}
               type="button"
               onClick={() => handleTabChange(tab.id as "text" | "article" | "youtube")}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 active
                   ? "border-[#1877F2] text-[#1877F2]"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -318,8 +318,6 @@ export default function CreatePage() {
               >
                 {extracting ? (
                   <Loader2 className="size-4 animate-spin" />
-                ) : inputTab === "youtube" ? (
-                  "Extract Transcript"
                 ) : (
                   "Extract"
                 )}
@@ -382,7 +380,7 @@ export default function CreatePage() {
                     )}
                   </Label>
                   {checked && result !== undefined && result !== "" && (
-                    <div className="ml-9 mt-2 mb-3">
+                    <div className="ml-6 sm:ml-9 mt-2 mb-3">
                       <div className="flex items-center gap-2 mb-2">
                         <Button
                           size="sm"
