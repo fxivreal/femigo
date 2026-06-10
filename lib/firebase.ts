@@ -14,26 +14,18 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 let _auth: any = null
 let _db: any = null
 
-const _import = (path: string) => eval(`import("${path}")`)
-
 export async function getAuthInstance(): Promise<any> {
   if (!_auth) {
-    const mod = await _import("firebase/auth")
-    _auth = mod.getAuth(app)
-    if (process.env.NEXT_PUBLIC_EMULATOR_HOST) {
-      mod.connectAuthEmulator(_auth, `http://${process.env.NEXT_PUBLIC_EMULATOR_HOST}:9099`)
-    }
+    const { auth } = await import("./firebase-auth-init")
+    _auth = auth
   }
   return _auth
 }
 
 export async function getDbInstance(): Promise<any> {
   if (!_db) {
-    const mod = await _import("firebase/firestore")
-    _db = mod.getFirestore(app)
-    if (process.env.NEXT_PUBLIC_EMULATOR_HOST) {
-      mod.connectFirestoreEmulator(_db, process.env.NEXT_PUBLIC_EMULATOR_HOST, 8080)
-    }
+    const { db } = await import("./firebase-db-init")
+    _db = db
   }
   return _db
 }
