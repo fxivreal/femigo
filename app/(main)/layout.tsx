@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { DashboardNav } from "@/components/dashboard-nav"
+import { FeedbackButton } from "@/components/feedback-button"
 
 export default function MainLayout({
   children,
@@ -37,6 +38,7 @@ export default function MainLayout({
       <main className="flex-1 md:ml-60 pb-16 md:pb-0">
         {children}
       </main>
+      <FeedbackButton />
     </div>
   )
 }
