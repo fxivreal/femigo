@@ -14,10 +14,9 @@ export function GoogleButton() {
     setLoading(true)
     try {
       const auth = await getAuthInstance()
-      const { signInWithPopup, GoogleAuthProvider } = await import("firebase/auth")
+      const { signInWithRedirect, GoogleAuthProvider } = await import("firebase/auth")
       const provider = new GoogleAuthProvider()
-      await signInWithPopup(auth, provider)
-      router.push("/home")
+      await signInWithRedirect(auth, provider)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Something went wrong"
       toast.error(message)

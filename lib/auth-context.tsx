@@ -27,12 +27,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const auth = await getAuthInstance()
       if (cancelled) return
       authRef.current = auth
-      const { onAuthStateChanged } = await import("firebase/auth")
+      const { onAuthStateChanged, getRedirectResult } = await import("firebase/auth")
       const unsubscribe = onAuthStateChanged(auth, (firebaseUser: any) => {
         setUser(firebaseUser)
         setLoading(false)
       })
       cleanupRef.current = unsubscribe
+
+      getRedirectResult(auth).catch(() => {})
     })()
     return () => {
       cancelled = true
