@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { signInWithEmailAndPassword } from "firebase/auth"
 import { getAuthInstance } from "@/lib/firebase"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -31,7 +30,9 @@ export function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     setLoading(true)
     try {
-      await signInWithEmailAndPassword(getAuthInstance(), data.email, data.password)
+      const auth = await getAuthInstance()
+      const { signInWithEmailAndPassword } = await import("firebase/auth")
+      await signInWithEmailAndPassword(auth, data.email, data.password)
       toast.success("Signed in successfully")
       router.push("/home")
     } catch (error: unknown) {

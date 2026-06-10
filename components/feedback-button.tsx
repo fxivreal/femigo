@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { addDoc, collection, serverTimestamp } from "firebase/firestore"
 import { getDbInstance } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
@@ -19,7 +18,9 @@ export function FeedbackButton() {
     if (!message.trim() || !user) return
     setSending(true)
     try {
-      await addDoc(collection(getDbInstance(), "feedback"), {
+      const db = await getDbInstance()
+      const { addDoc, collection, serverTimestamp } = await import("firebase/firestore")
+      await addDoc(collection(db, "feedback"), {
         userId: user.uid,
         email: user.email,
         message: message.trim(),

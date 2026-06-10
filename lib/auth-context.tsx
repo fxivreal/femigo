@@ -1,11 +1,7 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import {
-  onAuthStateChanged,
-  signOut as firebaseSignOut,
-  type User,
-} from "firebase/auth"
+import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from "react"
+import type { User, Auth } from "firebase/auth"
 import { getAuthInstance } from "@/lib/firebase"
 
 interface AuthContextType {
@@ -23,17 +19,32 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const authRef = useRef<Auth | null>(null)
+  const cleanupRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(getAuthInstance(), (firebaseUser) => {
-      setUser(firebaseUser)
-      setLoading(false)
-    })
-    return unsubscribe
+    let cancelled = false
+    ;(async () => {
+      const auth = await getAuthInstance()
+      if (cancelled) return
+      authRef.current = auth
+      const { onAuthStateChanged } = await import("firebase/auth")
+      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        setUser(firebaseUser)
+        setLoading(false)
+      })
+      cleanupRef.current = unsubscribe
+    })()
+    return () => {
+      cancelled = true
+      cleanupRef.current?.()
+    }
   }, [])
 
   const signOut = async () => {
-    await firebaseSignOut(getAuthInstance())
+    const auth = authRef.current || (await getAuthInstance())
+    const { signOut: firebaseSignOut } = await import("firebase/auth")
+    await firebaseSignOut(auth)
   }
 
   return (

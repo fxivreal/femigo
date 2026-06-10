@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { addDoc, collection, serverTimestamp } from "firebase/firestore"
 import { getDbInstance } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
 import { platformPrompts } from "@/lib/prompts"
@@ -177,6 +176,8 @@ export default function CreatePage() {
       if (!promptOverrides) {
         const saveToFirestore = async () => {
           try {
+            const { addDoc, collection, serverTimestamp } = await import("firebase/firestore")
+            const db = await getDbInstance()
             const sourceData: Record<string, unknown> = {
               userId: user.uid,
               content: content.trim(),
@@ -189,7 +190,6 @@ export default function CreatePage() {
               if (extractedTitle) sourceData.sourceTitle = extractedTitle
             }
 
-            const db = getDbInstance()
             const sourceRef = await addDoc(collection(db, "contentSources"), sourceData)
 
             await Promise.allSettled(

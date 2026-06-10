@@ -1,17 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  getDocs,
-  deleteDoc,
-  doc,
-  writeBatch,
-  type Timestamp,
-} from "firebase/firestore"
+import type { Timestamp } from "firebase/firestore"
 import { getDbInstance } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
@@ -54,7 +44,8 @@ export default function LibraryPage() {
     const fetchSources = async () => {
       setLoading(true)
       try {
-        const db = getDbInstance()
+        const { collection, query, where, orderBy, getDocs } = await import("firebase/firestore")
+        const db = await getDbInstance()
         const q = query(
           collection(db, "contentSources"),
           where("userId", "==", user.uid),
@@ -80,7 +71,8 @@ export default function LibraryPage() {
     if (openContent[sourceId]) return
     setLoadingContent(sourceId)
     try {
-      const db = getDbInstance()
+      const { collection, query, where, getDocs } = await import("firebase/firestore")
+      const db = await getDbInstance()
       const q = query(
         collection(db, "generatedContent"),
         where("sourceId", "==", sourceId)
@@ -110,7 +102,8 @@ export default function LibraryPage() {
   const handleDelete = async (source: ContentSource) => {
     setDeleting(source.id)
     try {
-      const db = getDbInstance()
+      const { collection, query, where, getDocs, doc, writeBatch } = await import("firebase/firestore")
+      const db = await getDbInstance()
       const batch = writeBatch(db)
       batch.delete(doc(db, "contentSources", source.id))
 

@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from "firebase/app"
-import { getAuth, connectAuthEmulator, type Auth } from "firebase/auth"
-import { getFirestore, connectFirestoreEmulator, type Firestore } from "firebase/firestore"
+import type { Auth } from "firebase/auth"
+import type { Firestore } from "firebase/firestore"
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -16,19 +16,26 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 let _auth: Auth | null = null
 let _db: Firestore | null = null
 
-export function getAuthInstance(): Auth {
-  if (!_auth) _auth = getAuth(app)
+export async function getAuthInstance(): Promise<Auth> {
+  if (!_auth) {
+    const { getAuth, connectAuthEmulator } = await import("firebase/auth")
+    _auth = getAuth(app)
+    if (process.env.NEXT_PUBLIC_EMULATOR_HOST) {
+      connectAuthEmulator(_auth, `http://${process.env.NEXT_PUBLIC_EMULATOR_HOST}:9099`)
+    }
+  }
   return _auth
 }
 
-export function getDbInstance(): Firestore {
-  if (!_db) _db = getFirestore(app)
+export async function getDbInstance(): Promise<Firestore> {
+  if (!_db) {
+    const { getFirestore, connectFirestoreEmulator } = await import("firebase/firestore")
+    _db = getFirestore(app)
+    if (process.env.NEXT_PUBLIC_EMULATOR_HOST) {
+      connectFirestoreEmulator(_db, process.env.NEXT_PUBLIC_EMULATOR_HOST, 8080)
+    }
+  }
   return _db
-}
-
-if (process.env.NEXT_PUBLIC_EMULATOR_HOST) {
-  connectAuthEmulator(getAuthInstance(), `http://${process.env.NEXT_PUBLIC_EMULATOR_HOST}:9099`)
-  connectFirestoreEmulator(getDbInstance(), process.env.NEXT_PUBLIC_EMULATOR_HOST, 8080)
 }
 
 export default app

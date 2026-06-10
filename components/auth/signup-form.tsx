@@ -2,8 +2,6 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { createUserWithEmailAndPassword } from "firebase/auth"
-import { doc, setDoc, serverTimestamp } from "firebase/firestore"
 import { getAuthInstance, getDbInstance } from "@/lib/firebase"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -32,8 +30,11 @@ export function SignupForm() {
   const onSubmit = async (data: SignupFormData) => {
     setLoading(true)
     try {
-      const cred = await createUserWithEmailAndPassword(getAuthInstance(), data.email, data.password)
-      await setDoc(doc(getDbInstance(), "users", cred.user.uid), {
+      const [auth, db] = await Promise.all([getAuthInstance(), getDbInstance()])
+      const { createUserWithEmailAndPassword } = await import("firebase/auth")
+      const { doc, setDoc, serverTimestamp } = await import("firebase/firestore")
+      const cred = await createUserWithEmailAndPassword(auth, data.email, data.password)
+      await setDoc(doc(db, "users", cred.user.uid), {
         name: data.name,
         email: data.email,
         createdAt: serverTimestamp(),
@@ -58,12 +59,12 @@ export function SignupForm() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
-            <Input id="name" placeholder="Enter your password" {...register("name")} />
+            <Input id="name" placeholder="Enter your name" {...register("name")} />
             {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="Enter your password" {...register("email")} />
+            <Input id="email" type="email" placeholder="john@example.com" {...register("email")} />
             {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
           </div>
           <div className="space-y-2">
