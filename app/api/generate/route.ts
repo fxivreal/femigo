@@ -80,18 +80,38 @@ function generateMockContent(platform: string, content: string) {
 
 function isMockMode() {
   const providerType = (process.env.AI_PROVIDER || "gemini").toLowerCase()
-  const geminiKey = process.env.GEMINI_API_KEY || ""
-  const openaiKeys = (process.env.OPENAI_API_KEYS || "")
-    .split(",")
-    .map((k) => k.trim())
-    .filter(Boolean)
 
-  return (
-    (providerType === "openai" &&
-      (openaiKeys.length === 0 || openaiKeys[0] === PLACEHOLDER_KEY)) ||
-    (providerType === "gemini" &&
-      (!geminiKey || geminiKey === "your-gemini-api-key"))
-  )
+  switch (providerType) {
+    case "gemini":
+      return (
+        !process.env.GEMINI_API_KEY ||
+        process.env.GEMINI_API_KEY === "your-gemini-api-key"
+      )
+    case "openai": {
+      const keys = (process.env.OPENAI_API_KEYS || "")
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean)
+      return keys.length === 0 || keys[0] === PLACEHOLDER_KEY
+    }
+    case "openrouter":
+      return (
+        !process.env.OPENROUTER_API_KEY ||
+        process.env.OPENROUTER_API_KEY.startsWith("sk-or-v1-placeholder")
+      )
+    case "deepseek":
+      return (
+        !process.env.DEEPSEEK_API_KEY ||
+        process.env.DEEPSEEK_API_KEY.startsWith("sk-placeholder")
+      )
+    case "groq":
+      return (
+        !process.env.GROQ_API_KEY ||
+        process.env.GROQ_API_KEY.startsWith("gsk_placeholder")
+      )
+    default:
+      return true
+  }
 }
 
 async function generateForPlatform(

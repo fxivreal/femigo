@@ -80,13 +80,24 @@ class GeminiProvider implements AIProvider {
 }
 
 class OpenAIProvider implements AIProvider {
-  readonly name = "openai"
+  readonly name: string
   private keys: string[]
   private model: string
+  private baseUrl: string
+  private extraHeaders: Record<string, string>
 
-  constructor(keys: string[], model?: string) {
+  constructor(
+    keys: string[],
+    model?: string,
+    baseUrl?: string,
+    extraHeaders?: Record<string, string>,
+    name?: string
+  ) {
     this.keys = keys
     this.model = model || "gpt-4o-mini"
+    this.baseUrl = baseUrl || "https://api.openai.com/v1"
+    this.extraHeaders = extraHeaders || {}
+    this.name = name || "openai"
   }
 
   async generate(options: GenerateOptions): Promise<string> {
@@ -95,12 +106,13 @@ class OpenAIProvider implements AIProvider {
     for (const key of this.keys) {
       try {
         const res = await fetch(
-          "https://api.openai.com/v1/chat/completions",
+          `${this.baseUrl}/chat/completions`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${key}`,
+              ...this.extraHeaders,
             },
             body: JSON.stringify({
               model: this.model,
@@ -120,12 +132,17 @@ class OpenAIProvider implements AIProvider {
 
         const errText = await res.text()
 
-        if (errText.includes("insufficient_quota")) {
+        if (
+          res.status === 429 ||
+          errText.includes("insufficient_quota") ||
+          errText.includes("quota") ||
+          errText.includes("rate_limit")
+        ) {
           lastErr = new AIError("Quota exhausted", "QUOTA_EXHAUSTED")
           continue
         }
 
-        lastErr = new Error(`OpenAI error ${res.status}: ${errText}`)
+        lastErr = new Error(`${this.name} error ${res.status}: ${errText}`)
         continue
       } catch (err) {
         lastErr = err instanceof Error ? err : new Error(String(err))
@@ -159,7 +176,66 @@ export function getAIProvider(): AIProvider {
         .filter(Boolean)
       if (keys.length === 0)
         throw new AIError("OPENAI_API_KEYS not configured")
-      provider = new OpenAIProvider(keys, process.env.OPENAI_MODEL)
+      provider = new OpenAIProvider(
+        keys,
+        process.env.OPENAI_MODEL,
+        process.env.OPENAI_BASE_URL
+      )
+      break
+    }
+
+    case "openrouter": {
+      const keys = (process.env.OPENROUTER_API_KEY || "")
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean)
+      if (keys.length === 0)
+        throw new AIError("OPENROUTER_API_KEY not configured")
+      provider = new OpenAIProvider(
+        keys,
+        process.env.OPENROUTER_MODEL || "deepseek/deepseek-v4-flash",
+        process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1",
+        {
+          "HTTP-Referer":
+            process.env.OPENROUTER_REFERER || "https://femigo.app",
+          "X-Title": process.env.OPENROUTER_APP_NAME || "Femigo",
+        },
+        "openrouter"
+      )
+      break
+    }
+
+    case "deepseek": {
+      const keys = (process.env.DEEPSEEK_API_KEY || "")
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean)
+      if (keys.length === 0)
+        throw new AIError("DEEPSEEK_API_KEY not configured")
+      provider = new OpenAIProvider(
+        keys,
+        process.env.DEEPSEEK_MODEL || "deepseek-v4-flash",
+        process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com",
+        undefined,
+        "deepseek"
+      )
+      break
+    }
+
+    case "groq": {
+      const keys = (process.env.GROQ_API_KEY || "")
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean)
+      if (keys.length === 0)
+        throw new AIError("GROQ_API_KEY not configured")
+      provider = new OpenAIProvider(
+        keys,
+        process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+        process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1",
+        undefined,
+        "groq"
+      )
       break
     }
 
