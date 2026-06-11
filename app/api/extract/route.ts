@@ -68,27 +68,41 @@ export async function POST(request: Request) {
         if (oembed?.title) title = oembed.title
       } catch { /* use default title */ }
 
+      let content = ""
+
       try {
         const { fetchTranscript } = await import("youtube-transcript")
         const transcriptItems = await fetchTranscript(videoId)
-        const content = transcriptItems.map((item: { text: string }) => item.text).join(" ")
-
-        if (!content.trim()) {
-          return NextResponse.json(
-            { error: "No transcript found for this video. It may have captions disabled." },
-            { status: 422 }
-          )
-        }
-
-        return NextResponse.json({ title, content })
+        content = transcriptItems.map((item: { text: string }) => item.text).join(" ")
       } catch (innerErr) {
         const msg = innerErr instanceof Error ? innerErr.message : String(innerErr)
         console.error("YouTube transcript error:", msg)
+      }
+
+      if (!content.trim()) {
+        try {
+          const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+            headers: { "User-Agent": "Mozilla/5.0 (compatible; Femigo/1.0)" },
+          })
+          if (pageRes.ok) {
+            const pageHtml = await pageRes.text()
+            const descMatch = pageHtml.match(/<meta\s+name="description"\s+content="([^"]+)"/)
+            const desc = descMatch ? descMatch[1].replace(/&#?\w+;/g, "") : ""
+            if (desc) content = desc
+          }
+        } catch {
+          console.error("YouTube page fallback failed")
+        }
+      }
+
+      if (!content.trim()) {
         return NextResponse.json(
-          { error: "Could not fetch transcript. The video may not have captions available." },
+          { error: "No transcript or description available for this video." },
           { status: 422 }
         )
       }
+
+      return NextResponse.json({ title, content })
     }
 
     return NextResponse.json({ error: "Unsupported type. Use 'article' or 'youtube'." }, { status: 400 })
