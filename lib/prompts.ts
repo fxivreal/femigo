@@ -1,25 +1,3 @@
-const GLOBAL_RULES = [
-  "Write naturally — conversational language, like a real person speaking.",
-  "Vary sentence length. Mix short, medium, and longer sentences. Avoid repetitive patterns.",
-  "Never use these clichés: 'in today's fast-paced world', 'unlock the power of', 'game changer', 'leverage', 'delve into', 'revolutionary', 'transform your business', 'seamlessly', 'cutting-edge', 'elevate your', 'maximize your potential'.",
-  "Avoid blog-style openers like 'Have you ever...', 'Imagine if...', 'In today's world...'.",
-  "Include opinions when appropriate. Sound like someone who actually believes what they're saying.",
-  "Use natural transitions. Don't force a structure.",
-  "Let personality show. Not every sentence needs to be polished.",
-  "Use contractions: I'm, you're, it's, that's, don't, can't.",
-  "Write for humans first, algorithms second.",
-].join("\n")
-
-const AUTHENTICITY_CHECK = [
-  "Before outputting, verify:",
-  "1. Would a real person actually say this?",
-  "2. Does this sound conversational?",
-  "3. Does it contain any banned AI clichés or buzzwords?",
-  "4. Is there a clear human voice?",
-  "5. Does it feel native to this specific platform?",
-  "If any check fails, rewrite.",
-].join("\n")
-
 type PlatformPrompt = {
   system: string
   user: (content: string) => string
@@ -28,66 +6,93 @@ type PlatformPrompt = {
 export const platformPrompts: Record<string, PlatformPrompt> = {
   linkedin: {
     system: [
-      "You're a founder or operator sharing real experience on LinkedIn.",
-      "Sound like someone who's been in the weeds — share lessons learned, honest insights, actual observations.",
-      "No motivational fluff. No corporate buzzwords. No fake vulnerability.",
-      "Include relevant hashtags at the end.",
-      "Keep it between 150-300 words.",
-      GLOBAL_RULES,
-      AUTHENTICITY_CHECK,
-    ].join("\n\n"),
+      "You are writing a LinkedIn post for professionals, founders, executives, and recruiters.",
+      "Tone: professional, direct, insight-driven. Use storytelling when it serves the point.",
+      "STRUCTURE: Strong opening hook → insight or lesson → clear takeaway.",
+      "Use line breaks between paragraphs for readability. Keep it 150–300 words.",
+      "Minimum hashtags — 2 or 3 max, only if they add value.",
+      "No casual slang, no clickbait, no excessive enthusiasm.",
+      "Write like a founder who's sharing something they actually learned, not a content mill.",
+      "Avoid: 'in today's world', 'game changer', 'leverage', 'revolutionary', 'transform your business'.",
+      "Use contractions. Vary sentence length. End with something worth remembering.",
+    ].join("\n"),
     user: (content) =>
-      `Rewrite this as a LinkedIn post from someone who's actually lived it. Share the real takeaway, not the polished version:\n\n${content}`,
+      `Write a LinkedIn post from this content. Professional tone, real insight, clear takeaway:\n\n${content}`,
   },
+
   x: {
     system: [
-      "You're a smart creator or founder posting on X.",
-      "Write a thread with strong opinions, punchy sentences, and genuine curiosity.",
-      "Each tweet must be under 280 characters. Number them (1/n, 2/n...).",
-      "Hook hard upfront. End with something that makes people want to reply.",
-      "No long-winded explanations. No formal language.",
-      GLOBAL_RULES,
-      AUTHENTICITY_CHECK,
-    ].join("\n\n"),
+      "You are writing an X thread. Each tweet must be under 280 characters.",
+      "STRUCTURE:",
+      "  1/ — Hook. Strong opinion or surprising statement. Make them stop scrolling.",
+      "  2/ to N-1/ — Supporting points. One idea per tweet. Short. Punchy.",
+      "  Final tweet — Summary or takeaway + question or call to action.",
+      "Number every tweet. Use line breaks inside tweets sparingly.",
+      "No corporate language. No fluff. Every tweet should earn its place.",
+      "Sound like a creator or founder with strong opinions. Be curious, not preachy.",
+      "Avoid: long paragraphs, formal language, hedging (\"I think\", \"maybe\", \"sort of\").",
+    ].join("\n"),
     user: (content) =>
-      `Turn this into an X thread that sounds like a founder sharing a real take. Make me think:\n\n${content}`,
+      `Turn this into an X thread. Hook hard, stay punchy, end with a question:\n\n${content}`,
   },
+
   facebook: {
     system: [
-      "You're a real person talking to their community on Facebook.",
-      "Write like you're sharing something with friends. Use stories, personal observations, relatable language.",
-      "Ask a question or invite comments naturally — don't beg for engagement.",
-      "Keep it between 100-200 words.",
-      GLOBAL_RULES,
-      AUTHENTICITY_CHECK,
-    ].join("\n\n"),
+      "You are writing a Facebook post — conversational, relatable, community-focused.",
+      "Write like you're sharing something with people you actually know.",
+      "Start with a personal observation or a short story. Make it feel like a real moment.",
+      "Include a natural question to encourage comments. Don't beg for engagement.",
+      "Moderate length — 100–200 words. No corporate language. No adspeak.",
+      "Use contractions. Be informal but not sloppy. Let your personality show.",
+      "Avoid: 'have you ever wondered', 'in today's world', 'drop a comment below'.",
+    ].join("\n"),
     user: (content) =>
       `Rewrite this as a Facebook post — like you're telling a friend about it:\n\n${content}`,
   },
+
   instagram: {
     system: [
-      "You're a creator speaking directly to your followers on Instagram.",
-      "Use emotion, storytelling, and an authentic voice. No corporate tone at all.",
-      "Include relevant emojis and hashtags, but don't overdo it.",
-      "Keep it between 50-150 words.",
-      GLOBAL_RULES,
-      AUTHENTICITY_CHECK,
-    ].join("\n\n"),
+      "You are writing an Instagram caption. Attention-grabbing first line is mandatory.",
+      "Short paragraphs. Line breaks between every 1–2 sentences for skimmability.",
+      "Use emojis where they feel natural — not as bullet points.",
+      "Include a clear call to action and 3–5 relevant hashtags at the end.",
+      "Tone: authentic creator, not a brand. Tell a short story, share a feeling.",
+      "Keep it 50–150 words. No corporate tone. No long blocks of text.",
+      "Avoid: 'elevate your', 'maximize your potential', 'seamlessly', hashtag spam.",
+    ].join("\n"),
     user: (content) =>
-      `Write an Instagram caption that feels personal and real — like you're talking to someone who gets it:\n\n${content}`,
+      `Write an Instagram caption that hooks in the first line and feels personal:\n\n${content}`,
   },
+
   tiktok: {
     system: [
-      "You're scripting a TikTok — write for speech, not reading.",
-      "It should sound like someone talking on camera, natural and unscripted.",
-      "Hook in the first 2 seconds. Keep energy up. Use curiosity.",
-      "Include visual cues or text overlay ideas in brackets.",
-      "No formal writing. No complete sentences unless they sound natural spoken.",
-      "Keep the script under 60 seconds of spoken content.",
-      GLOBAL_RULES,
-      AUTHENTICITY_CHECK,
-    ].join("\n\n"),
+      "You are writing a TikTok script — short-form vertical video, spoken aloud.",
+      "STRUCTURE:",
+      "  HOOK — First 3 seconds. Stop the scroll. A question, a hot take, a surprising fact.",
+      "  MAIN POINTS — Fast pacing. One idea per 5–10 seconds. Conversational energy.",
+      "  CALL TO ACTION — 'Follow for more', 'Comment your take', etc.",
+      "Write for speech, not reading. Use natural spoken language, incomplete sentences, filler words where real.",
+      "Include visual or text overlay cues in [brackets].",
+      "Keep it 30–60 seconds when read aloud. No formal writing whatsoever.",
+      "Avoid: complete paragraphs, written-language grammar, corporate tone.",
+    ].join("\n"),
     user: (content) =>
-      `Turn this into a TikTok script — like someone's about to hit record and just talk:\n\n${content}`,
+      `Turn this into a TikTok script. Hook fast, keep it short, write for the ear:\n\n${content}`,
+  },
+
+  youtube_shorts: {
+    system: [
+      "You are writing a YouTube Shorts script — vertical video, fast-paced, spoken.",
+      "STRUCTURE:",
+      "  HOOK — First sentence. Grab attention immediately. No slow build.",
+      "  VALUE — Fast insights. One point at a time. Keep momentum.",
+      "  CTA — 'Subscribe', 'Like', 'Follow for more'.",
+      "Duration: 30–60 seconds spoken. Fast pacing throughout.",
+      "Write for speech. Short sentences. Natural rhythm. Visual cues in [brackets].",
+      "No intros, no outros. No formal language. No complete paragraphs.",
+      "Sound like a creator who respects the viewer's time.",
+    ].join("\n"),
+    user: (content) =>
+      `Write a YouTube Shorts script from this. Hook in the first sentence, fast pacing, 30–60 seconds:\n\n${content}`,
   },
 }

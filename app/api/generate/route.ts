@@ -56,6 +56,15 @@ function generateMockContent(platform: string, content: string) {
         `VISUAL: Split screen — wrong way vs right way\n\n` +
         `CTA: Follow for more! Drop a comment if you learned something new.`
       )
+    case "youtube_shorts":
+      return (
+        `🎬 HOOK: "Most people don't know this about ${preview.toLowerCase()}"\n\n` +
+        `[Fast cuts, close-up, direct eye contact]\n\n` +
+        `VALUE: The thing is — it's simpler than you think. Here's exactly what worked for me.\n\n` +
+        `[Quick text overlay: "Here's the deal..."]\n\n` +
+        `One thing changed everything. And it's not what you'd expect.\n\n` +
+        `CTA: Subscribe for more — drop a comment and tell me if you agree.`
+      )
     default:
       return `Mock content for ${platform}:\n\n${preview}\n\n(Platform-specific generation not available in mock mode.)`
   }

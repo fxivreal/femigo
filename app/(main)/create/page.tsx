@@ -28,6 +28,7 @@ const platforms: PlatformDef[] = [
   { id: "facebook", label: "Facebook" },
   { id: "instagram", label: "Instagram" },
   { id: "tiktok", label: "TikTok" },
+  { id: "youtube_shorts", label: "YouTube Shorts" },
 ]
 
 type PlatformStatus = "idle" | "generating" | "done" | "error"
@@ -171,7 +172,7 @@ export default function CreatePage() {
       if (hasContent) {
         toast.success("Content generated successfully!")
       } else {
-        toast.error("Generation failed. Check your OpenAI account billing or API key.")
+        toast.error("Generation failed. Check your API key and billing.")
       }
 
       if (!promptOverrides) {

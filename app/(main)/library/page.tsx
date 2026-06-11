@@ -29,6 +29,7 @@ const platformColors: Record<string, { bg: string; text: string; label: string }
   facebook: { bg: "bg-primary/10", text: "text-primary", label: "Facebook" },
   instagram: { bg: "bg-[#E4405F]/10", text: "text-[#E4405F]", label: "Instagram" },
   tiktok: { bg: "bg-neutral-900/10", text: "text-neutral-900", label: "TikTok" },
+  youtube_shorts: { bg: "bg-red-500/10", text: "text-red-600", label: "Shorts" },
 }
 
 export default function LibraryPage() {
