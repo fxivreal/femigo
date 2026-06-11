@@ -25,8 +25,8 @@ export default function MainLayout({
     return (
       <div className="flex min-h-screen items-center justify-center p-8">
         <div className="flex flex-col items-center gap-4">
-          <div className="flex items-center justify-center size-10 rounded-xl bg-[#6366F1]/10">
-            <div className="size-5 rounded-sm bg-[#6366F1] animate-pulse" />
+          <div className="flex items-center justify-center size-10 rounded-xl bg-primary/10">
+            <div className="size-5 rounded-sm bg-primary animate-pulse" />
           </div>
           <div className="space-y-2 w-40">
             <Skeleton className="h-3 w-full" />

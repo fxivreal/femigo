@@ -78,7 +78,7 @@ export function LoginForm() {
               <p className="text-xs text-destructive">{errors.password.message}</p>
             )}
           </div>
-          <Button type="submit" className="w-full bg-[#6366F1] hover:bg-[#6366F1]/80 text-white" disabled={loading}>
+          <Button type="submit" className="w-full bg-primary hover:bg-primary/80 text-white" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="size-4 mr-1.5 animate-spin" />
@@ -90,7 +90,7 @@ export function LoginForm() {
           </Button>
         </form>
         <div className="flex justify-end mt-1">
-          <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-[#6366F1] transition-colors">
+          <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-primary transition-colors">
             Forgot password?
           </Link>
         </div>
@@ -105,7 +105,7 @@ export function LoginForm() {
         <GoogleButton />
         <p className="mt-4 text-center text-xs text-muted-foreground">
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="font-medium text-[#6366F1] hover:underline">
+          <Link href="/signup" className="font-medium text-primary hover:underline">
             Sign up
           </Link>
         </p>

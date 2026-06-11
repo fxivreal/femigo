@@ -92,7 +92,7 @@ export function ForgotPasswordForm() {
               <p className="text-xs text-destructive">{errors.email.message}</p>
             )}
           </div>
-          <Button type="submit" className="w-full bg-[#6366F1] hover:bg-[#6366F1]/80 text-white" disabled={loading}>
+          <Button type="submit" className="w-full bg-primary hover:bg-primary/80 text-white" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="size-4 mr-1.5 animate-spin" />
@@ -105,7 +105,7 @@ export function ForgotPasswordForm() {
         </form>
         <p className="mt-4 text-center text-xs text-muted-foreground">
           Remember your password?{" "}
-          <Link href="/login" className="font-medium text-[#6366F1] hover:underline">
+          <Link href="/login" className="font-medium text-primary hover:underline">
             Sign in
           </Link>
         </p>

@@ -41,7 +41,7 @@ export function FeedbackButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-20 md:bottom-6 right-4 z-40 flex items-center gap-2 text-xs font-medium text-white bg-[#6366F1] hover:bg-[#6366F1]/80 px-4 py-2.5 rounded-full shadow-lg transition-all hover:shadow-xl active:scale-95"
+        className="fixed bottom-20 md:bottom-6 right-4 z-40 flex items-center gap-2 text-xs font-medium text-white bg-primary hover:bg-primary/80 px-4 py-2.5 rounded-full shadow-lg transition-all hover:shadow-xl active:scale-95"
       >
         <MessageSquareText className="size-3.5" />
         Feedback
@@ -70,7 +70,7 @@ export function FeedbackButton() {
                 placeholder="Type your feedback here..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="min-h-[120px] resize-none text-sm focus-visible:ring-[#6366F1]/20"
+                className="min-h-[120px] resize-none text-sm focus-visible:ring-primary/20"
               />
             </div>
             <div className="flex items-center justify-end gap-2 px-5 pb-5 pt-2">
@@ -81,7 +81,7 @@ export function FeedbackButton() {
                 size="sm"
                 onClick={handleSend}
                 disabled={sending || !message.trim()}
-                className="bg-[#6366F1] hover:bg-[#6366F1]/80 text-white"
+                className="bg-primary hover:bg-primary/80 text-white"
               >
                 {sending ? (
                   <Loader2 className="size-3 mr-1 animate-spin" />

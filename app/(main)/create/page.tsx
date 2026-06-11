@@ -257,7 +257,7 @@ export default function CreatePage() {
               onClick={() => handleTabChange(tab.id as "text" | "article" | "youtube")}
               className={`flex items-center justify-center gap-1.5 flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
                 active
-                  ? "bg-background text-[#6366F1] shadow-sm"
+                  ? "bg-background text-primary shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -299,7 +299,7 @@ export default function CreatePage() {
                 <Button
                   onClick={handleExtract}
                   disabled={extracting || !url.trim()}
-                  className="bg-[#6366F1] hover:bg-[#6366F1]/80 text-white shrink-0"
+                  className="bg-primary hover:bg-primary/80 text-white shrink-0"
                 >
                   {extracting ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -329,7 +329,7 @@ export default function CreatePage() {
                 ? "Extracting content..."
                 : "Extracted content will appear here. You can edit it before generating."
             }
-            className="min-h-[250px] sm:min-h-[350px] resize-y focus-visible:ring-[#6366F1]/20"
+            className="min-h-[250px] sm:min-h-[350px] resize-y focus-visible:ring-primary/20"
             value={content}
             onChange={(e) => setContent(e.target.value)}
           />
@@ -347,7 +347,7 @@ export default function CreatePage() {
             <button
               type="button"
               onClick={selectAllPlatforms}
-              className="text-xs font-medium text-[#6366F1] hover:underline"
+              className="text-xs font-medium text-primary hover:underline"
             >
               {selectedPlatforms.length === platforms.length ? "Deselect all" : "Select all"}
             </button>
@@ -367,7 +367,7 @@ export default function CreatePage() {
                   disabled={generating}
                   className={`relative flex items-center gap-3 rounded-xl border p-3.5 text-left transition-all ${
                     checked
-                      ? "border-[#6366F1]/30 bg-[#6366F1]/5 shadow-sm"
+                      ? "border-primary/30 bg-primary/5 shadow-sm"
                       : "border-border bg-card hover:border-foreground/20 hover:shadow-sm"
                   } ${generating ? "opacity-50 cursor-not-allowed" : "cursor-pointer active:scale-[0.98]"}`}
                 >
@@ -395,7 +395,7 @@ export default function CreatePage() {
                     </div>
                   </div>
                   {checked && (
-                    <div className="flex items-center justify-center size-5 rounded-full bg-[#6366F1] text-white">
+                    <div className="flex items-center justify-center size-5 rounded-full bg-primary text-white">
                       <Check className="size-3" />
                     </div>
                   )}
@@ -412,7 +412,7 @@ export default function CreatePage() {
           onClick={() => handleGenerate()}
           disabled={generating || !content.trim() || selectedPlatforms.length === 0}
           size="lg"
-          className="bg-[#6366F1] hover:bg-[#6366F1]/80 text-white"
+          className="bg-primary hover:bg-primary/80 text-white"
         >
           {generating ? (
             <Loader2 className="size-4 mr-2 animate-spin" />
@@ -536,7 +536,7 @@ export default function CreatePage() {
               <Textarea
                 value={editPromptText}
                 onChange={(e) => setEditPromptText(e.target.value)}
-                className="min-h-[200px] resize-none text-sm focus-visible:ring-[#6366F1]/20"
+                className="min-h-[200px] resize-none text-sm focus-visible:ring-primary/20"
               />
             </div>
             <div className="flex items-center justify-end gap-2 px-5 pb-5 pt-2">
@@ -551,7 +551,7 @@ export default function CreatePage() {
                 size="sm"
                 onClick={handleRegenerate}
                 disabled={regenerating || !editPromptText.trim()}
-                className="bg-[#6366F1] hover:bg-[#6366F1]/80 text-white"
+                className="bg-primary hover:bg-primary/80 text-white"
               >
                 {regenerating ? (
                   <Loader2 className="size-3 mr-1 animate-spin" />

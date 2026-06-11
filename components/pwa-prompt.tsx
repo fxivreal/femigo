@@ -23,7 +23,7 @@ export function InstallPrompt() {
         await (deferredPrompt as any).userChoice
         setDeferredPrompt(null)
       }}
-      className="fixed bottom-20 right-4 z-50 rounded-full bg-[#6366F1] px-4 py-2 text-sm font-medium text-white shadow-lg hover:bg-[#4F46E5]"
+      className="fixed bottom-20 right-4 z-50 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white shadow-lg hover:bg-primary-dark"
     >
       Install App
     </button>
