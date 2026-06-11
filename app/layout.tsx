@@ -6,6 +6,17 @@ export const metadata: Metadata = {
   title: "Femigo",
   description: "Create once, publish everywhere.",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Femigo",
+  },
+  icons: {
+    apple: [
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+  },
 };
 
 export const viewport: Viewport = {
