@@ -35,10 +35,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setPersistence,
       } = await import("firebase/auth")
 
-      await setPersistence(auth, browserLocalPersistence)
+      try {
+        await setPersistence(auth, browserLocalPersistence)
+      } catch (e) {
+        console.error("Auth persistence error:", e)
+      }
 
       const unsubscribe = onAuthStateChanged(auth, (firebaseUser: any) => {
-        if (!cancelled) setUser(firebaseUser)
+        if (cancelled) return
+        setUser(firebaseUser)
       })
       cleanupRef.current = unsubscribe
 
@@ -47,8 +52,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (result?.user) {
           setUser(result.user)
         }
-      } catch {
-        // sign-in failed — user stays null
+      } catch (err: unknown) {
+        const e = err as { code?: string; message?: string }
+        console.error("getRedirectResult error:", e?.code || e?.message || e)
       }
 
       if (!cancelled) setLoading(false)

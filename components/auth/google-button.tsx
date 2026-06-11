@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 
+function isMobile() {
+  if (typeof navigator === "undefined") return false
+  return /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
+
 export function GoogleButton() {
   const [loading, setLoading] = useState(false)
 
@@ -13,29 +18,41 @@ export function GoogleButton() {
     setLoading(true)
     try {
       const auth = await getAuthInstance()
-      const { signInWithPopup, signInWithRedirect, GoogleAuthProvider, browserLocalPersistence, setPersistence } = await import("firebase/auth")
+      const {
+        signInWithPopup,
+        signInWithRedirect,
+        GoogleAuthProvider,
+        browserLocalPersistence,
+        setPersistence,
+      } = await import("firebase/auth")
 
       await setPersistence(auth, browserLocalPersistence)
 
       const provider = new GoogleAuthProvider()
 
-      // Try popup first (more reliable), fall back to redirect if popup blocked
-      try {
+      if (isMobile()) {
+        await signInWithRedirect(auth, provider)
+      } else {
         await signInWithPopup(auth, provider)
-      } catch (popupErr: unknown) {
-        const pErr = popupErr as { code?: string }
-        if (pErr?.code === "auth/popup-blocked" || pErr?.code === "auth/popup-closed-by-user") {
-          await signInWithRedirect(auth, provider)
-        } else {
-          throw popupErr
-        }
       }
     } catch (error: unknown) {
       const err = error as { code?: string; message?: string }
+      console.error("Google sign-in error:", err?.code, err?.message)
+
       if (err?.code === "auth/configuration-not-found") {
-        toast.error("Google sign-in is not configured. Ask the developer to enable it in Firebase Console > Authentication > Sign-in method.")
+        toast.error(
+          "Google sign-in is not configured. The developer must enable the Google provider in Firebase Console > Authentication > Sign-in method, and add this domain to Authorized domains.",
+          { duration: 8000 }
+        )
+      } else if (err?.code === "auth/popup-blocked") {
+        toast.error("Popup was blocked. Please allow popups for this site and try again.")
       } else if (err?.code === "auth/popup-closed-by-user") {
-        // user closed the popup — do nothing
+        // user closed popup — nothing to do
+      } else if (err?.code === "auth/unauthorized-domain") {
+        toast.error(
+          "This domain is not authorized for sign-in. The developer must add it to Firebase Console > Authentication > Settings > Authorized domains.",
+          { duration: 8000 }
+        )
       } else {
         toast.error(err?.message || "Something went wrong")
       }
