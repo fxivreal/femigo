@@ -1,12 +1,12 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
+import { getUserMetrics, type UserMetrics } from "@/lib/metrics"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Sparkles, Library, FileText, ArrowRight, PenLine, Globe, Hash, Video } from "lucide-react"
+import { Sparkles, FileText, ArrowRight, PenLine, Globe, Video, BarChart3, CalendarDays, TrendingUp, Hash } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
-import { getDbInstance } from "@/lib/firebase"
 import { SkeletonCard } from "@/components/skeleton"
 
 const quickActions = [
@@ -15,34 +15,81 @@ const quickActions = [
   { href: "/create?tab=youtube", icon: Video, label: "YouTube URL", desc: "Get transcript" },
 ]
 
+const platformLabels: Record<string, string> = {
+  linkedin: "LinkedIn",
+  x: "X (Twitter)",
+  facebook: "Facebook",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  youtube_shorts: "Shorts",
+}
+
+type RecentItem = {
+  id: string
+  platform: string
+  content: string
+  createdAt: any
+}
+
 export default function HomePage() {
   const { user } = useAuth()
-  const [recentCount, setRecentCount] = useState<number | null>(null)
+  const [metrics, setMetrics] = useState<UserMetrics | null>(null)
+  const [recentItems, setRecentItems] = useState<RecentItem[]>([])
   const [loading, setLoading] = useState(true)
   const name = user?.displayName || user?.email?.split("@")[0] || "User"
 
   useEffect(() => {
     if (!user) return
-    const fetchCount = async () => {
+    const loadDashboard = async () => {
       try {
-        const { collection, query, where, getDocs, orderBy, limit } = await import("firebase/firestore")
-        const db = await getDbInstance()
-        const q = query(
-          collection(db, "contentSources"),
-          where("userId", "==", user.uid),
-          orderBy("createdAt", "desc"),
-          limit(1)
-        )
-        const snapshot = await getDocs(q)
-        setRecentCount(snapshot.docs.length)
+        const [userMetrics] = await Promise.all([
+          getUserMetrics(user.uid),
+          loadRecentActivity(user.uid),
+        ])
+        setMetrics(userMetrics)
       } catch {
-        // silently fail
+        // Silent
       } finally {
         setLoading(false)
       }
     }
-    fetchCount()
+    loadDashboard()
   }, [user])
+
+  const loadRecentActivity = async (userId: string) => {
+    try {
+      const { collection, query, where, orderBy, limit, getDocs } = await import("firebase/firestore")
+      const { getDbInstance } = await import("@/lib/firebase")
+      const db = await getDbInstance()
+      const q = query(
+        collection(db, "generatedContent"),
+        where("userId", "==", userId),
+        orderBy("createdAt", "desc"),
+        limit(5)
+      )
+      const snapshot = await getDocs(q)
+      const items = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as RecentItem[]
+      setRecentItems(items)
+    } catch {
+      // Silent
+    }
+  }
+
+  const platformEntries = metrics ? Object.entries(metrics.platformCounts) : []
+  const mostUsedPlatform = platformEntries.length > 0
+    ? platformEntries.sort(([, a], [, b]) => b - a)[0]
+    : null
+
+  const formatDate = (ts: any) => {
+    if (!ts?.toDate) return ""
+    return ts.toDate().toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  }
+
+  const truncate = (text: string, max: number) =>
+    text.length > max ? text.slice(0, max).trimEnd() + "..." : text
 
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-3xl mx-auto animate-fade-in">
@@ -81,47 +128,94 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Stats row */}
+      {/* Metrics grid */}
       <section className="mb-8">
-        <div className="grid grid-cols-2 gap-3">
-          <Card size="sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Sparkles className="size-3.5 text-primary" />
-                Generations
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="h-7 w-12 animate-skeleton rounded bg-foreground/5" />
-              ) : (
-                <p className="text-2xl font-bold text-foreground">
-                  {recentCount !== null && recentCount > 0 ? recentCount : 0}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {recentCount && recentCount > 0 ? "in your library" : "start creating"}
-              </p>
-            </CardContent>
-          </Card>
-          <Link href="/create" className="group">
-            <Card size="sm" className="h-full hover:shadow-md hover:border-foreground/20 transition-all cursor-pointer">
+        {loading ? (
+          <div className="grid grid-cols-2 gap-3">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <Card size="sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-sm">
-                  <PenLine className="size-3.5 text-primary" />
-                  New content
+                  <BarChart3 className="size-3.5 text-primary" />
+                  Generations
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm font-medium text-foreground">Create now</p>
-                <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                  Generate for all platforms
-                  <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform" />
+                <p className="text-2xl font-bold text-foreground">
+                  {metrics?.totalGenerations ?? 0}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">all time</p>
+              </CardContent>
+            </Card>
+
+            <Card size="sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <CalendarDays className="size-3.5 text-primary" />
+                  This month
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-foreground">
+                  {metrics?.monthlyGenerations ?? 0}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {new Date().toLocaleDateString("en-US", { month: "long" })}
                 </p>
               </CardContent>
             </Card>
-          </Link>
-        </div>
+
+            <Card size="sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <TrendingUp className="size-3.5 text-primary" />
+                  Most used
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {mostUsedPlatform ? (
+                  <>
+                    <p className="text-lg font-bold text-foreground">
+                      {platformLabels[mostUsedPlatform[0]] || mostUsedPlatform[0]}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {mostUsedPlatform[1]} generations
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-foreground">&mdash;</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">no data yet</p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Link href="/create" className="group">
+              <Card size="sm" className="h-full hover:shadow-md hover:border-foreground/20 transition-all cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <PenLine className="size-3.5 text-primary" />
+                    New content
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm font-medium text-foreground">Create now</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                    Generate for all platforms
+                    <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform" />
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+        )}
       </section>
 
       {/* Recent activity */}
@@ -142,7 +236,7 @@ export default function HomePage() {
             <SkeletonCard />
             <SkeletonCard />
           </div>
-        ) : recentCount === 0 ? (
+        ) : recentItems.length === 0 ? (
           <Card size="sm">
             <CardHeader>
               <CardTitle className="text-sm">No generations yet</CardTitle>
@@ -160,22 +254,30 @@ export default function HomePage() {
             </CardContent>
           </Card>
         ) : (
-          <Card size="sm">
-            <CardContent className="flex items-center gap-3 py-4">
-              <div className="flex items-center justify-center size-9 rounded-lg bg-primary/10 text-primary">
-                <Library className="size-4" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">Content saved</p>
-                <p className="text-xs text-muted-foreground">View your library for all saved generations</p>
-              </div>
-              <Link href="/library">
-                <Button variant="ghost" size="sm">
-                  Open <ArrowRight className="size-3 ml-1" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+          <div className="space-y-2">
+            {recentItems.map((item) => (
+              <Card key={item.id} size="sm">
+                <CardContent className="flex items-start gap-3 py-3">
+                  <div className="flex items-center justify-center size-8 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
+                    <Hash className="size-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground leading-relaxed line-clamp-2">
+                      {truncate(item.content, 120)}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                        {platformLabels[item.platform] || item.platform}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {formatDate(item.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
       </section>
     </div>

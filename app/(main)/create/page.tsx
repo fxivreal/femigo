@@ -194,7 +194,7 @@ export default function CreatePage() {
 
             const sourceRef = await addDoc(collection(db, "contentSources"), sourceData)
 
-            await Promise.allSettled(
+            const genResults = await Promise.allSettled(
               data.results
                 .filter((r: { platform: string; content: string; error?: string }) => r.content && !r.error)
                 .map((r: { platform: string; content: string }) =>
@@ -207,6 +207,11 @@ export default function CreatePage() {
                   })
                 )
             )
+
+            if (genResults.some((r) => r.status === "fulfilled")) {
+              const { updateUserMetrics } = await import("@/lib/metrics")
+              await updateUserMetrics(user.uid, selectedPlatforms)
+            }
           } catch {
             // Silent
           }

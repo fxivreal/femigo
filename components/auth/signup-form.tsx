@@ -39,6 +39,11 @@ export function SignupForm() {
         name: data.name,
         email: data.email,
         createdAt: serverTimestamp(),
+        totalGenerations: 0,
+        totalSources: 0,
+        monthlyGenerations: 0,
+        monthlyResetAt: serverTimestamp(),
+        platformCounts: {},
       })
       toast.success("Account created successfully")
       router.push("/home")
