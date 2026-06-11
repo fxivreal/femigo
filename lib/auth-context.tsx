@@ -27,7 +27,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const auth = await getAuthInstance()
       if (cancelled) return
       authRef.current = auth
-      const { onAuthStateChanged, getRedirectResult } = await import("firebase/auth")
+
+      const {
+        onAuthStateChanged,
+        getRedirectResult,
+        browserLocalPersistence,
+        setPersistence,
+      } = await import("firebase/auth")
+
+      await setPersistence(auth, browserLocalPersistence)
 
       const unsubscribe = onAuthStateChanged(auth, (firebaseUser: any) => {
         if (!cancelled) setUser(firebaseUser)
@@ -35,7 +43,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cleanupRef.current = unsubscribe
 
       try {
-        await getRedirectResult(auth)
+        const result = await getRedirectResult(auth)
+        if (result?.user) {
+          setUser(result.user)
+        }
       } catch {
         // sign-in failed — user stays null
       }

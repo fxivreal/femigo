@@ -1,26 +1,29 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { getAuthInstance } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 
 export function GoogleButton() {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
 
   const handleGoogleLogin = async () => {
     setLoading(true)
     try {
       const auth = await getAuthInstance()
-      const { signInWithRedirect, GoogleAuthProvider } = await import("firebase/auth")
+      const { signInWithRedirect, GoogleAuthProvider, browserLocalPersistence, setPersistence } = await import("firebase/auth")
+      await setPersistence(auth, browserLocalPersistence)
       const provider = new GoogleAuthProvider()
       await signInWithRedirect(auth, provider)
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Something went wrong"
-      toast.error(message)
+      const err = error as { code?: string; message?: string }
+      if (err?.code === "auth/configuration-not-found") {
+        toast.error("Google sign-in is not enabled. Ask the developer to enable it in Firebase Console.")
+      } else {
+        toast.error(err?.message || "Something went wrong")
+      }
     } finally {
       setLoading(false)
     }
