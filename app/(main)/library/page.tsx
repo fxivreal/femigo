@@ -25,7 +25,7 @@ type GeneratedItem = {
 
 const platformColors: Record<string, { bg: string; text: string; label: string }> = {
   linkedin: { bg: "bg-[#0A66C2]/10", text: "text-[#0A66C2]", label: "LinkedIn" },
-  x: { bg: "bg-neutral-900/10", text: "text-neutral-900", label: "X" },
+  x: { bg: "bg-neutral-900/10", text: "text-neutral-900", label: "X (Twitter)" },
   facebook: { bg: "bg-primary/10", text: "text-primary", label: "Facebook" },
   instagram: { bg: "bg-[#E4405F]/10", text: "text-[#E4405F]", label: "Instagram" },
   tiktok: { bg: "bg-neutral-900/10", text: "text-neutral-900", label: "TikTok" },

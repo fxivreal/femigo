@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 
+export const runtime = "nodejs"
+
 export async function POST(request: Request) {
   try {
     const { type, url } = await request.json()
@@ -9,23 +11,47 @@ export async function POST(request: Request) {
     }
 
     if (type === "article") {
-      const html = await fetch(url, {
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; Femigo/1.0)" },
-      }).then((r) => {
-        if (!r.ok) throw new Error(`Failed to fetch URL: ${r.status}`)
-        return r.text()
-      })
-
-      const { JSDOM } = await import("jsdom")
-      const { Readability } = await import("@mozilla/readability")
-      const doc = new JSDOM(html, { url })
-      const parsed = new Readability(doc.window.document).parse()
-
-      if (!parsed) {
-        return NextResponse.json({ error: "Could not extract content from this URL." }, { status: 422 })
+      let html
+      try {
+        const res = await fetch(url, {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; Femigo/1.0)" },
+        })
+        if (!res.ok) {
+          return NextResponse.json(
+            { error: `Failed to fetch URL (${res.status}). The site may block automated requests.` },
+            { status: 422 }
+          )
+        }
+        html = await res.text()
+      } catch {
+        return NextResponse.json(
+          { error: "Could not reach that URL. Check the address and try again." },
+          { status: 422 }
+        )
       }
 
-      return NextResponse.json({ title: parsed.title, content: parsed.textContent })
+      try {
+        const { JSDOM } = await import("jsdom")
+        const { Readability } = await import("@mozilla/readability")
+        const doc = new JSDOM(html, { url })
+        const parsed = new Readability(doc.window.document).parse()
+
+        if (!parsed || !parsed.textContent) {
+          return NextResponse.json(
+            { error: "Could not extract readable content from this URL." },
+            { status: 422 }
+          )
+        }
+
+        return NextResponse.json({ title: parsed.title || "Untitled", content: parsed.textContent })
+      } catch (innerErr) {
+        const msg = innerErr instanceof Error ? innerErr.message : String(innerErr)
+        console.error("Readability/JSDOM error:", msg)
+        return NextResponse.json(
+          { error: "Content extraction failed. Try pasting the text directly instead." },
+          { status: 500 }
+        )
+      }
     }
 
     if (type === "youtube") {
@@ -33,10 +59,6 @@ export async function POST(request: Request) {
       if (!videoId) {
         return NextResponse.json({ error: "Invalid YouTube URL." }, { status: 400 })
       }
-
-      const { fetchTranscript } = await import("youtube-transcript")
-      const transcriptItems = await fetchTranscript(videoId)
-      const content = transcriptItems.map((item: { text: string }) => item.text).join(" ")
 
       let title = "YouTube Video"
       try {
@@ -46,12 +68,33 @@ export async function POST(request: Request) {
         if (oembed?.title) title = oembed.title
       } catch { /* use default title */ }
 
-      return NextResponse.json({ title, content })
+      try {
+        const { fetchTranscript } = await import("youtube-transcript")
+        const transcriptItems = await fetchTranscript(videoId)
+        const content = transcriptItems.map((item: { text: string }) => item.text).join(" ")
+
+        if (!content.trim()) {
+          return NextResponse.json(
+            { error: "No transcript found for this video. It may have captions disabled." },
+            { status: 422 }
+          )
+        }
+
+        return NextResponse.json({ title, content })
+      } catch (innerErr) {
+        const msg = innerErr instanceof Error ? innerErr.message : String(innerErr)
+        console.error("YouTube transcript error:", msg)
+        return NextResponse.json(
+          { error: "Could not fetch transcript. The video may not have captions available." },
+          { status: 422 }
+        )
+      }
     }
 
     return NextResponse.json({ error: "Unsupported type. Use 'article' or 'youtube'." }, { status: 400 })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to extract content."
+    console.error("Extract route error:", message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

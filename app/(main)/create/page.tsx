@@ -24,7 +24,7 @@ type PlatformDef = {
 
 const platforms: PlatformDef[] = [
   { id: "linkedin", label: "LinkedIn" },
-  { id: "x", label: "X" },
+  { id: "x", label: "X (Twitter)" },
   { id: "facebook", label: "Facebook" },
   { id: "instagram", label: "Instagram" },
   { id: "tiktok", label: "TikTok" },
