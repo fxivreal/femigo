@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server"
 import { platformPrompts } from "@/lib/prompts"
-
-const apiKeys = (process.env.OPENAI_API_KEYS || "")
-  .split(",")
-  .map((k) => k.trim())
-  .filter(Boolean)
+import { getAIProvider, AIError } from "@/lib/ai"
 
 const PLACEHOLDER_KEY = "sk-your-key-here"
 
@@ -65,57 +61,6 @@ function generateMockContent(platform: string, content: string) {
   }
 }
 
-async function tryFetchWithFallback(
-  platform: string,
-  system: string,
-  userContent: string
-): Promise<{ platform: string; content: string | null; error?: string }> {
-  for (const key of apiKeys) {
-    try {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${key}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: system },
-            { role: "user", content: userContent },
-          ],
-          temperature: 0.7,
-        }),
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        return {
-          platform,
-          content: data.choices?.[0]?.message?.content || "",
-        }
-      }
-
-      const errText = await res.text()
-
-      if (errText.includes("insufficient_quota")) {
-        continue
-      }
-
-      // Non-quota error: fall through to next key or mock
-      continue
-    } catch {
-      continue
-    }
-  }
-
-  return {
-    platform,
-    content: null,
-    error: "All API keys exhausted or out of quota.",
-  }
-}
-
 export async function POST(request: Request) {
   try {
     const { content, platforms, prompts } = await request.json()
@@ -127,13 +72,28 @@ export async function POST(request: Request) {
       )
     }
 
-    if (apiKeys.length === 0 || apiKeys[0] === PLACEHOLDER_KEY) {
+    const providerType = (process.env.AI_PROVIDER || "gemini").toLowerCase()
+    const geminiKey = process.env.GEMINI_API_KEY || ""
+    const openaiKeys = (process.env.OPENAI_API_KEYS || "")
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean)
+
+    const isMockMode =
+      (providerType === "openai" &&
+        (openaiKeys.length === 0 || openaiKeys[0] === PLACEHOLDER_KEY)) ||
+      (providerType === "gemini" &&
+        (!geminiKey || geminiKey === "your-gemini-api-key"))
+
+    if (isMockMode) {
       const results = platforms.map((platform: string) => ({
         platform,
         content: generateMockContent(platform, content),
       }))
       return NextResponse.json({ results })
     }
+
+    const provider = getAIProvider()
 
     const results = await Promise.all(
       platforms.map(async (platform: string) => {
@@ -143,11 +103,23 @@ export async function POST(request: Request) {
         }
 
         const userMessage = (prompts && prompts[platform]) || prompt.user(content)
-        const result = await tryFetchWithFallback(platform, prompt.system, userMessage)
 
-        if (result.content) return result
-
-        return { platform, content: generateMockContent(platform, content) }
+        try {
+          const result = await provider.generate({
+            system: prompt.system,
+            user: userMessage,
+          })
+          return { platform, content: result }
+        } catch (err) {
+          if (err instanceof AIError && err.code === "QUOTA_EXHAUSTED") {
+            return {
+              platform,
+              content: generateMockContent(platform, content),
+              error: "Quota exhausted, using fallback.",
+            }
+          }
+          return { platform, content: generateMockContent(platform, content) }
+        }
       })
     )
 
