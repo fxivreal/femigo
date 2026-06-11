@@ -9,8 +9,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
-import { Sparkles, FileText, Loader2, Copy, PenLine, X, Link, Play, Check, ChevronRight, ArrowLeft } from "lucide-react"
+import { Sparkles, FileText, Loader2, X, Link, Play, Check, ChevronRight } from "lucide-react"
 import { GenerationProgress } from "@/components/generation-progress"
+import { ContentActions } from "@/components/content-actions"
 
 const inputTabs = [
   { id: "text", label: "Text", icon: FileText },
@@ -81,15 +82,6 @@ export default function CreatePage() {
       setSelectedPlatforms([])
     } else {
       setSelectedPlatforms(platforms.map((p) => p.id))
-    }
-  }
-
-  const handleCopy = async (text: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      toast.success(`${label} content copied!`)
-    } catch {
-      toast.error("Failed to copy.")
     }
   }
 
@@ -603,59 +595,39 @@ export default function CreatePage() {
             return (
               <Card key={platformId} size="sm" className="overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between py-3">
-                  <CardTitle className="text-sm">{platform.label}</CardTitle>
-                  <div className="flex items-center gap-1">
-                    {status === "generating" && (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Loader2 className="size-3 animate-spin" />
-                        Generating...
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm">{platform.label}</CardTitle>
+                    {platformStylesState[platformId] && (
+                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                        {platformStyles[platformId]?.find((s) => s.id === platformStylesState[platformId])?.label}
                       </span>
                     )}
-                    {status === "done" && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 text-xs gap-1"
-                          onClick={() => handleEditPrompt(platformId)}
-                        >
-                          <PenLine className="size-3" />
-                          Edit prompt
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 text-xs gap-1"
-                          disabled
-                        >
-                          <Sparkles className="size-3" />
-                          Publish
-                        </Button>
-                      </>
-                    )}
-                    {status === "error" && (
-                      <span className="text-xs text-destructive">Failed</span>
-                    )}
                   </div>
+                  {status === "generating" && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Loader2 className="size-3 animate-spin" />
+                      Generating...
+                    </span>
+                  )}
+                  {status === "done" && (
+                    <ContentActions
+                      content={result || ""}
+                      platformLabel={platform.label}
+                      showRegenerate
+                      onRegenerate={() => handleEditPrompt(platformId)}
+                    />
+                  )}
+                  {status === "error" && (
+                    <span className="text-xs text-destructive">Failed</span>
+                  )}
                 </CardHeader>
                 {result && (
                   <CardContent className="pb-3">
-                    <div className="relative">
-                      <Textarea
-                        readOnly
-                        value={result}
-                        className="min-h-[100px] resize-none text-sm pr-12"
-                      />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="absolute top-1.5 right-1.5 h-7 gap-1"
-                        onClick={() => handleCopy(result, platform.label)}
-                      >
-                        <Copy className="size-3" />
-                        <span className="hidden sm:inline">Copy</span>
-                      </Button>
-                    </div>
+                    <Textarea
+                      readOnly
+                      value={result}
+                      className="min-h-[100px] resize-none text-sm"
+                    />
                   </CardContent>
                 )}
                 {status === "generating" && (

@@ -6,7 +6,8 @@ import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "sonner"
-import { ChevronDown, ChevronUp, Trash2, Loader2, Library, Sparkles, ExternalLink } from "lucide-react"
+import { ChevronDown, ChevronUp, Trash2, Loader2, Library, Sparkles } from "lucide-react"
+import { ContentActions } from "@/components/content-actions"
 import { Skeleton } from "@/components/skeleton"
 import Link from "next/link"
 
@@ -21,6 +22,7 @@ type GeneratedItem = {
   id: string
   platform: string
   content: string
+  favorited?: boolean
 }
 
 const platformColors: Record<string, { bg: string; text: string; label: string }> = {
@@ -128,6 +130,21 @@ export default function LibraryPage() {
     } finally {
       setDeleting(null)
     }
+  }
+
+  const handleFavoriteToggle = async (contentId: string, favorited: boolean) => {
+    const { doc, updateDoc } = await import("firebase/firestore")
+    const db = await getDbInstance()
+    await updateDoc(doc(db, "generatedContent", contentId), { favorited })
+    setOpenContent((prev) => {
+      const next = { ...prev }
+      for (const sourceId of Object.keys(next)) {
+        next[sourceId] = next[sourceId].map((item) =>
+          item.id === contentId ? { ...item, favorited } : item
+        )
+      }
+      return next
+    })
   }
 
   const formatDate = (timestamp: any) => {
@@ -265,11 +282,22 @@ export default function LibraryPage() {
                           )
                           return (
                             <div key={platform} className="px-4 py-3.5">
-                              <div className="flex items-center gap-2 mb-2">
-                                {pc && (
-                                  <span className={`inline-flex items-center text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${pc.bg} ${pc.text}`}>
-                                    {pc.label}
-                                  </span>
+                              <div className="flex items-center justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2">
+                                  {pc && (
+                                    <span className={`inline-flex items-center text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${pc.bg} ${pc.text}`}>
+                                      {pc.label}
+                                    </span>
+                                  )}
+                                </div>
+                                {item && (
+                                  <ContentActions
+                                    content={item.content}
+                                    platformLabel={pc?.label || platform}
+                                    contentId={item.id}
+                                    isFavorited={item.favorited}
+                                    onFavoriteToggle={handleFavoriteToggle}
+                                  />
                                 )}
                               </div>
                               <p className="text-sm whitespace-pre-wrap text-foreground leading-relaxed">
