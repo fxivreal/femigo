@@ -13,14 +13,29 @@ export function GoogleButton() {
     setLoading(true)
     try {
       const auth = await getAuthInstance()
-      const { signInWithRedirect, GoogleAuthProvider, browserLocalPersistence, setPersistence } = await import("firebase/auth")
+      const { signInWithPopup, signInWithRedirect, GoogleAuthProvider, browserLocalPersistence, setPersistence } = await import("firebase/auth")
+
       await setPersistence(auth, browserLocalPersistence)
+
       const provider = new GoogleAuthProvider()
-      await signInWithRedirect(auth, provider)
+
+      // Try popup first (more reliable), fall back to redirect if popup blocked
+      try {
+        await signInWithPopup(auth, provider)
+      } catch (popupErr: unknown) {
+        const pErr = popupErr as { code?: string }
+        if (pErr?.code === "auth/popup-blocked" || pErr?.code === "auth/popup-closed-by-user") {
+          await signInWithRedirect(auth, provider)
+        } else {
+          throw popupErr
+        }
+      }
     } catch (error: unknown) {
       const err = error as { code?: string; message?: string }
       if (err?.code === "auth/configuration-not-found") {
-        toast.error("Google sign-in is not enabled. Ask the developer to enable it in Firebase Console.")
+        toast.error("Google sign-in is not configured. Ask the developer to enable it in Firebase Console > Authentication > Sign-in method.")
+      } else if (err?.code === "auth/popup-closed-by-user") {
+        // user closed the popup — do nothing
       } else {
         toast.error(err?.message || "Something went wrong")
       }
