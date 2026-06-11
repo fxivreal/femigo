@@ -9,7 +9,7 @@ import { User, Mail, LogOut, Sparkles, ShieldCheck } from "lucide-react"
 function Avatar({ name, email }: { name: string; email?: string | null }) {
   const initial = (name || email || "U").charAt(0).toUpperCase()
   return (
-    <div className="flex items-center justify-center size-12 rounded-full bg-[#1877F2]/10 text-[#1877F2] font-bold text-lg">
+    <div className="flex items-center justify-center size-12 rounded-full bg-[#6366F1]/10 text-[#6366F1] font-bold text-lg">
       {initial}
     </div>
   )
@@ -74,8 +74,8 @@ export default function AccountPage() {
           <CardDescription>Your current subscription</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4 rounded-xl border bg-[#1877F2]/5 border-[#1877F2]/10 p-4">
-            <div className="flex items-center justify-center size-10 rounded-lg bg-[#1877F2]/10 text-[#1877F2]">
+          <div className="flex items-center gap-4 rounded-xl border bg-[#6366F1]/5 border-[#6366F1]/10 p-4">
+            <div className="flex items-center justify-center size-10 rounded-lg bg-[#6366F1]/10 text-[#6366F1]">
               <Sparkles className="size-5" />
             </div>
             <div className="flex-1">

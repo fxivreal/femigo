@@ -70,7 +70,7 @@ export default function HomePage() {
                 href={action.href}
                 className="flex flex-col items-center gap-1.5 rounded-xl border bg-card p-4 hover:shadow-md hover:border-foreground/20 transition-all active:scale-[0.97]"
               >
-                <div className="flex items-center justify-center size-9 rounded-lg bg-[#1877F2]/10 text-[#1877F2]">
+                <div className="flex items-center justify-center size-9 rounded-lg bg-[#6366F1]/10 text-[#6366F1]">
                   <Icon className="size-4" />
                 </div>
                 <span className="text-xs font-medium text-center">{action.label}</span>
@@ -87,7 +87,7 @@ export default function HomePage() {
           <Card size="sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">
-                <Sparkles className="size-3.5 text-[#1877F2]" />
+                <Sparkles className="size-3.5 text-[#6366F1]" />
                 Generations
               </CardTitle>
             </CardHeader>
@@ -108,7 +108,7 @@ export default function HomePage() {
             <Card size="sm" className="h-full hover:shadow-md hover:border-foreground/20 transition-all cursor-pointer">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-sm">
-                  <PenLine className="size-3.5 text-[#1877F2]" />
+                  <PenLine className="size-3.5 text-[#6366F1]" />
                   New content
                 </CardTitle>
               </CardHeader>
@@ -132,7 +132,7 @@ export default function HomePage() {
           </h2>
           <Link
             href="/library"
-            className="text-xs font-medium text-[#1877F2] hover:underline"
+            className="text-xs font-medium text-[#6366F1] hover:underline"
           >
             View all
           </Link>
@@ -152,7 +152,7 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <Link href="/create">
-                <Button size="sm" className="bg-[#1877F2] hover:bg-[#1877F2]/80 text-white">
+                <Button size="sm" className="bg-[#6366F1] hover:bg-[#6366F1]/80 text-white">
                   <Sparkles className="size-3.5 mr-1.5" />
                   Create content
                 </Button>
@@ -162,7 +162,7 @@ export default function HomePage() {
         ) : (
           <Card size="sm">
             <CardContent className="flex items-center gap-3 py-4">
-              <div className="flex items-center justify-center size-9 rounded-lg bg-[#1877F2]/10 text-[#1877F2]">
+              <div className="flex items-center justify-center size-9 rounded-lg bg-[#6366F1]/10 text-[#6366F1]">
                 <Library className="size-4" />
               </div>
               <div className="flex-1 min-w-0">

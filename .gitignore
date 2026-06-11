@@ -38,6 +38,10 @@ baseui_install.txt
 dev_error.txt
 dev_output.txt
 
+# serwist
+public/sw*
+public/swe-worker*
+
 # vercel
 .vercel
 

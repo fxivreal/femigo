@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Provider } from "@/components/provider";
+import { PwaRegister } from "@/components/pwa-register";
+import { InstallPrompt } from "@/components/pwa-prompt";
 
 export const metadata: Metadata = {
   title: "Femigo",
@@ -20,7 +22,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1877F2",
+  themeColor: "#6366F1",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -35,7 +37,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <Provider>{children}</Provider>
+        <Provider>
+          <PwaRegister />
+          <InstallPrompt />
+          {children}
+        </Provider>
       </body>
     </html>
   );

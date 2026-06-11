@@ -3,13 +3,18 @@
 :root {
   --background: #fcfbf8;
   --foreground: #171717;
-  --heading: #1877F2;
+  --heading: #6366F1;
+  --accent: #8B5CF6;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-heading: var(--heading);
+  --color-accent: var(--accent);
+  --color-brand: #6366F1;
+  --color-brand-dark: #4F46E5;
+  --color-brand-light: #A78BFA;
   --font-sans: ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, monospace;
 }
@@ -32,7 +37,7 @@ html {
 }
 
 ::selection {
-  background: rgba(24, 119, 242, 0.15);
+  background: rgba(99, 102, 241, 0.15);
 }
 
 * {

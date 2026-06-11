@@ -26,7 +26,7 @@ type GeneratedItem = {
 const platformColors: Record<string, { bg: string; text: string; label: string }> = {
   linkedin: { bg: "bg-[#0A66C2]/10", text: "text-[#0A66C2]", label: "LinkedIn" },
   x: { bg: "bg-neutral-900/10", text: "text-neutral-900", label: "X" },
-  facebook: { bg: "bg-[#1877F2]/10", text: "text-[#1877F2]", label: "Facebook" },
+  facebook: { bg: "bg-[#6366F1]/10", text: "text-[#6366F1]", label: "Facebook" },
   instagram: { bg: "bg-[#E4405F]/10", text: "text-[#E4405F]", label: "Instagram" },
   tiktok: { bg: "bg-neutral-900/10", text: "text-neutral-900", label: "TikTok" },
 }
@@ -165,7 +165,7 @@ export default function LibraryPage() {
         </div>
       ) : sources.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
-          <div className="flex items-center justify-center size-14 rounded-xl bg-[#1877F2]/10 text-[#1877F2] mb-4">
+          <div className="flex items-center justify-center size-14 rounded-xl bg-[#6366F1]/10 text-[#6366F1] mb-4">
             <Library className="size-6" />
           </div>
           <h2 className="text-lg font-semibold text-foreground mb-1">No content yet</h2>
@@ -173,7 +173,7 @@ export default function LibraryPage() {
             Create your first piece of content and it will appear here.
           </p>
           <Link href="/create">
-            <Button className="bg-[#1877F2] hover:bg-[#1877F2]/80 text-white">
+            <Button className="bg-[#6366F1] hover:bg-[#6366F1]/80 text-white">
               <Sparkles className="size-4 mr-1.5" />
               Create content
             </Button>

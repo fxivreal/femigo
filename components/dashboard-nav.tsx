@@ -29,7 +29,7 @@ export function DashboardNav() {
       {/* Desktop sidebar */}
       <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-60 md:border-r md:bg-background md:z-30">
         <div className="flex items-center gap-2 px-6 h-14 border-b shrink-0">
-          <Sparkles className="size-5 text-[#1877F2]" />
+          <Sparkles className="size-5 text-[#6366F1]" />
           <span className="font-semibold text-base text-heading">Femigo</span>
         </div>
         <nav className="flex-1 flex flex-col p-3 gap-1">
@@ -43,14 +43,14 @@ export function DashboardNav() {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
                   active
-                    ? "bg-[#1877F2]/10 text-[#1877F2]"
+                    ? "bg-[#6366F1]/10 text-[#6366F1]"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
                 <Icon className="size-4 shrink-0" />
                 <span>{item.label}</span>
                 {active && (
-                  <span className="ml-auto size-1.5 rounded-full bg-[#1877F2]" />
+                  <span className="ml-auto size-1.5 rounded-full bg-[#6366F1]" />
                 )}
               </Link>
             )
@@ -58,7 +58,7 @@ export function DashboardNav() {
         </nav>
         <div className="p-3 border-t">
           <div className="flex items-center gap-3 px-3 py-2 mb-2">
-            <div className="flex items-center justify-center size-7 rounded-full bg-[#1877F2]/10 text-[#1877F2] text-xs font-bold">
+            <div className="flex items-center justify-center size-7 rounded-full bg-[#6366F1]/10 text-[#6366F1] text-xs font-bold">
               {(user?.displayName || user?.email || "U").charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
@@ -94,12 +94,12 @@ export function DashboardNav() {
                 className={cn(
                   "flex flex-col items-center justify-center gap-0.5 h-full w-full text-xs font-medium transition-all relative",
                   active
-                    ? "text-[#1877F2]"
+                    ? "text-[#6366F1]"
                     : "text-muted-foreground"
                 )}
               >
                 {active && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-[#1877F2]" />
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-[#6366F1]" />
                 )}
                 <Icon className="size-5" />
                 <span>{item.label}</span>

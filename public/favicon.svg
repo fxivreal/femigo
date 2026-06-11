@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- F vertical stem -->
+  <path d="M10 5v22" stroke="#6366F1" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <!-- F top bar -->
+  <path d="M10 8h10" stroke="#6366F1" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- F middle bar -->
+  <path d="M10 15h7" stroke="#6366F1" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- Branching posts -->
+  <circle cx="22.5" cy="8" r="1.4" fill="#8B5CF6"/>
+  <circle cx="25.5" cy="8" r="1" fill="#A78BFA"/>
+  <circle cx="19.5" cy="15" r="1" fill="#8B5CF6"/>
+  <circle cx="22.5" cy="15" r="0.7" fill="#A78BFA"/>
+</svg>

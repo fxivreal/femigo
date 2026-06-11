@@ -22,7 +22,7 @@ export default function Error({
         <p className="max-w-sm text-muted-foreground">
           An unexpected error occurred. Please try again.
         </p>
-        <Button onClick={reset} className="bg-[#1877F2] hover:bg-[#1877F2]/80 text-white">
+        <Button onClick={reset} className="bg-[#6366F1] hover:bg-[#6366F1]/80 text-white">
           Try again
         </Button>
       </div>

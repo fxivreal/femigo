@@ -24,7 +24,7 @@ export default function LandingPage() {
     <div className="flex min-h-screen flex-col">
       <header className="flex items-center justify-between px-4 sm:px-8 h-14 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="flex items-center gap-2">
-          <Sparkles className="size-5 text-[#1877F2]" />
+          <Sparkles className="size-5 text-[#6366F1]" />
           <span className="font-semibold text-base text-heading">Femigo</span>
         </div>
         <div className="flex items-center gap-3">
@@ -36,7 +36,7 @@ export default function LandingPage() {
           </Link>
           <Link
             href="/signup"
-            className="inline-flex h-8 items-center justify-center rounded-lg bg-[#1877F2] px-4 text-sm font-medium text-white hover:bg-[#1877F2]/80 transition-colors"
+            className="inline-flex h-8 items-center justify-center rounded-lg bg-[#6366F1] px-4 text-sm font-medium text-white hover:bg-[#6366F1]/80 transition-colors"
           >
             Get started
           </Link>
@@ -46,10 +46,10 @@ export default function LandingPage() {
       <main className="flex-1">
         {/* Hero */}
         <section className="relative overflow-hidden px-4 pt-20 pb-24 sm:pt-28 sm:pb-32">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#1877F2]/5 via-transparent to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#6366F1]/5 via-transparent to-transparent pointer-events-none" />
           <div className="max-w-3xl mx-auto text-center relative">
             <div className="inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1 text-xs font-medium text-muted-foreground mb-6">
-              <Sparkles className="size-3 text-[#1877F2]" />
+              <Sparkles className="size-3 text-[#6366F1]" />
               AI-powered content repurposing
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-heading leading-[1.1]">
@@ -64,7 +64,7 @@ export default function LandingPage() {
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 href="/signup"
-                className="inline-flex h-10 items-center justify-center rounded-lg bg-[#1877F2] px-6 text-sm font-medium text-white hover:bg-[#1877F2]/80 transition-colors gap-1.5 w-full sm:w-auto"
+                className="inline-flex h-10 items-center justify-center rounded-lg bg-[#6366F1] px-6 text-sm font-medium text-white hover:bg-[#6366F1]/80 transition-colors gap-1.5 w-full sm:w-auto"
               >
                 Get started free
                 <ChevronRight className="size-4" />
@@ -98,7 +98,7 @@ export default function LandingPage() {
                     key={feature.title}
                     className="rounded-xl border bg-card p-6 hover:shadow-md hover:border-foreground/20 transition-all"
                   >
-                    <div className="flex items-center justify-center size-10 rounded-lg bg-[#1877F2]/10 text-[#1877F2] mb-4">
+                    <div className="flex items-center justify-center size-10 rounded-lg bg-[#6366F1]/10 text-[#6366F1] mb-4">
                       <Icon className="size-5" />
                     </div>
                     <div className="flex items-center gap-2 mb-2">
@@ -121,7 +121,7 @@ export default function LandingPage() {
       <footer className="border-t px-4 py-6">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-[#1877F2]" />
+            <Sparkles className="size-4 text-[#6366F1]" />
             <span className="text-sm font-medium text-heading">Femigo</span>
           </div>
           <p className="text-xs text-muted-foreground">
