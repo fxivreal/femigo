@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Sparkles, Repeat2, FileCheck, Globe, ChevronRight } from "lucide-react"
 import { Logo } from "@/components/logo"
+import { ContentPreview } from "@/components/content-preview"
 
 const features = [
   {
@@ -78,6 +79,9 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* Content Preview */}
+        <ContentPreview />
 
         {/* Features */}
         <section className="px-4 pb-24">
