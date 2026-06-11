@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server"
-import { platformPrompts } from "@/lib/prompts"
+import { platformPrompts, platformStyles } from "@/lib/prompts"
 import { getAIProvider, AIError } from "@/lib/ai"
 
 const PLACEHOLDER_KEY = "sk-your-key-here"
 
 function truncate(content: string, max: number) {
   return content.length > max ? content.slice(0, max).trimEnd() + "..." : content
+}
+
+function getStyleInstruction(platform: string, style?: string): string {
+  if (!style) return ""
+  const options = platformStyles[platform]
+  if (!options) return ""
+  const match = options.find((s) => s.id === style)
+  return match ? match.instruction : ""
 }
 
 function generateMockContent(platform: string, content: string) {
@@ -90,12 +98,18 @@ async function generateForPlatform(
   platform: string,
   content: string,
   prompts: Record<string, string> | undefined,
-  mock: boolean
+  mock: boolean,
+  styles?: Record<string, string>
 ) {
   const prompt = platformPrompts[platform]
   if (!prompt) {
     return { platform, content: null, error: `Unknown platform: ${platform}` }
   }
+
+  const styleInstruction = getStyleInstruction(platform, styles?.[platform])
+  const systemPrompt = styleInstruction
+    ? prompt.system + "\n\nStyle: " + styleInstruction
+    : prompt.system
 
   const userMessage = (prompts && prompts[platform]) || prompt.user(content)
 
@@ -106,7 +120,7 @@ async function generateForPlatform(
   try {
     const provider = getAIProvider()
     const result = await provider.generate({
-      system: prompt.system,
+      system: systemPrompt,
       user: userMessage,
     })
     return { platform, content: result }
@@ -124,7 +138,7 @@ async function generateForPlatform(
 
 export async function POST(request: Request) {
   try {
-    const { content, platforms, prompts } = await request.json()
+    const { content, platforms, prompts, styles } = await request.json()
 
     if (!content || !platforms || !Array.isArray(platforms) || platforms.length === 0) {
       return NextResponse.json(
@@ -152,7 +166,7 @@ export async function POST(request: Request) {
           await new Promise((r) => setTimeout(r, 100))
 
           const promises = platforms.map(async (platform) => {
-            const result = await generateForPlatform(platform, content, prompts, mock)
+            const result = await generateForPlatform(platform, content, prompts, mock, styles)
             send({ type: "result", platform: result.platform, content: result.content, error: result.error })
             return result
           })

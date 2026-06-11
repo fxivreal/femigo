@@ -1,3 +1,31 @@
+export const platformStyles: Record<string, { id: string; label: string; instruction: string }[]> = {
+  linkedin: [
+    { id: "professional", label: "Professional", instruction: "Tone: polished, direct, insight-driven. Use data and real experience. Keep it professional but not stiff." },
+    { id: "educational", label: "Educational", instruction: "Tone: teacher sharing knowledge. Break down concepts, explain the 'why', and leave the reader with something actionable." },
+    { id: "thought-leadership", label: "Thought Leadership", instruction: "Tone: opinionated, forward-looking, challenging norms. Share a strong point of view and back it with reasoning." },
+  ],
+  x: [
+    { id: "thread", label: "Thread", instruction: "Format as a numbered thread (1/n, 2/n...). Hook in first tweet, supporting points in the middle, summary + question in the last tweet." },
+    { id: "single", label: "Single Post", instruction: "Write as one standalone post under 280 characters. Punchy, memorable, and shareable. Include a hook and a takeaway." },
+    { id: "viral", label: "Viral Style", instruction: "Write for maximum reach. Controversial or surprising opinion in the hook. Short sentences. Pattern-interrupt style. End with a reply bait." },
+  ],
+  instagram: [
+    { id: "caption", label: "Caption", instruction: "Write as a carousel/post caption. Hook in the first line. Short paragraphs with line breaks. Storytelling tone. CTA + 3-5 hashtags." },
+    { id: "story", label: "Story", instruction: "Write as a Stories script. Short, urgent, ephemeral. Use phrases like 'swipe up', 'tag a friend', '24 hours only'. Minimal text, high energy." },
+    { id: "reel", label: "Reel Script", instruction: "Write as a Reel script. Hook in the first 2 seconds. Fast pacing. Visual cues in [brackets]. Trending audio reference if applicable." },
+  ],
+  tiktok: [
+    { id: "educational", label: "Educational", instruction: "Tone: teacher on TikTok. Explain something useful in under 60 seconds. Hook with a question or surprising fact. Include 'follow for more' CTA." },
+    { id: "storytelling", label: "Storytelling", instruction: "Tone: storyteller. Personal anecdote with a twist or lesson. Hook with 'this one time' or similar. Narrative arc: setup → tension → resolution." },
+    { id: "viral-hook", label: "Viral Hook", instruction: "Tone: high energy, trend-aware. Hook in the first 1 second. Pattern interrupt. Use controversy, surprise, or humor. Optimized for the algorithm." },
+  ],
+  youtube_shorts: [
+    { id: "tutorial", label: "Tutorial", instruction: "Teach something step by step. Start with the result, then rewind to show how. Fast cuts. 'Here's how' structure. CTA: subscribe for more tutorials." },
+    { id: "commentary", label: "Commentary", instruction: "Share an opinion or hot take. Hook with a strong statement. Back it up with 2-3 quick points. End with 'agree or disagree?'." },
+    { id: "promotional", label: "Promotional", instruction: "Promote a product, service, or idea. Hook with the problem. Show the solution. Benefits-focused. CTA: link in bio or follow." },
+  ],
+}
+
 type PlatformPrompt = {
   system: string
   user: (content: string) => string

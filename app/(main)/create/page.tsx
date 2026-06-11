@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { getDbInstance } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
-import { platformPrompts } from "@/lib/prompts"
+import { platformPrompts, platformStyles } from "@/lib/prompts"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -53,12 +53,27 @@ export default function CreatePage() {
 
   const [editingPlatform, setEditingPlatform] = useState<string | null>(null)
   const [editPromptText, setEditPromptText] = useState("")
+  const [platformStylesState, setPlatformStylesState] = useState<Record<string, string>>({})
   const [regenerating, setRegenerating] = useState(false)
 
+  const getDefaultStyle = (platform: string): string => {
+    const styles = platformStyles[platform]
+    return styles?.[0]?.id || ""
+  }
+
   const togglePlatform = (id: string) => {
-    setSelectedPlatforms((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
-    )
+    setSelectedPlatforms((prev) => {
+      if (prev.includes(id)) {
+        const next = prev.filter((p) => p !== id)
+        return next
+      }
+      setPlatformStylesState((s) => ({ ...s, [id]: getDefaultStyle(id) }))
+      return [...prev, id]
+    })
+  }
+
+  const setStyle = (platform: string, style: string) => {
+    setPlatformStylesState((prev) => ({ ...prev, [platform]: style }))
   }
 
   const selectAllPlatforms = () => {
@@ -147,6 +162,7 @@ export default function CreatePage() {
         body: JSON.stringify({
           content: content.trim(),
           platforms: promptOverrides ? Object.keys(promptOverrides) : selectedPlatforms,
+          styles: promptOverrides ? undefined : platformStylesState,
           prompts: promptOverrides,
         }),
       })
@@ -292,6 +308,7 @@ export default function CreatePage() {
         userId: user.uid,
         content: content.trim(),
         platforms: selectedPlatforms,
+        styles: platformStylesState,
         sourceType: inputTab,
         createdAt: serverTimestamp(),
       }
@@ -312,6 +329,7 @@ export default function CreatePage() {
             userId: user.uid,
             sourceId: sourceRef.id,
             platform: r.platform,
+            style: platformStylesState[r.platform] || "",
             content: r.content,
             createdAt: serverTimestamp(),
           })
@@ -462,47 +480,76 @@ export default function CreatePage() {
               const checked = selectedPlatforms.includes(platform.id)
               const status = platformStatuses[platform.id]
               const result = generatedResults[platform.id]
+              const styles = platformStyles[platform.id]
+              const activeStyle = platformStylesState[platform.id]
               return (
-                <button
+                <div
                   key={platform.id}
-                  type="button"
-                  onClick={() => !generating && togglePlatform(platform.id)}
-                  disabled={generating}
-                  className={`relative flex items-center gap-3 rounded-xl border p-3.5 text-left transition-all ${
+                  className={`rounded-xl border transition-all ${
                     checked
                       ? "border-primary/30 bg-primary/5 shadow-sm"
                       : "border-border bg-card hover:border-foreground/20 hover:shadow-sm"
-                  } ${generating ? "opacity-50 cursor-not-allowed" : "cursor-pointer active:scale-[0.98]"}`}
+                  } ${generating ? "opacity-50" : ""}`}
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{platform.label}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      {status === "generating" && (
-                        <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                          <Loader2 className="size-2.5 animate-spin" />
-                          Generating...
-                        </span>
-                      )}
-                      {status === "done" && (
-                        <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium">
-                          <Check className="size-2.5" />
-                          Done
-                        </span>
-                      )}
-                      {status === "error" && (
-                        <span className="text-[10px] text-destructive font-medium">Failed</span>
-                      )}
-                      {(!status || status === "idle") && checked && (
-                        <span className="text-[10px] text-muted-foreground">Selected</span>
-                      )}
+                  <button
+                    type="button"
+                    onClick={() => !generating && togglePlatform(platform.id)}
+                    disabled={generating}
+                    className="w-full flex items-center gap-3 p-3.5 text-left cursor-pointer active:scale-[0.98] disabled:cursor-not-allowed"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{platform.label}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {status === "generating" && (
+                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <Loader2 className="size-2.5 animate-spin" />
+                            Generating...
+                          </span>
+                        )}
+                        {status === "done" && (
+                          <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium">
+                            <Check className="size-2.5" />
+                            Done
+                          </span>
+                        )}
+                        {status === "error" && (
+                          <span className="text-[10px] text-destructive font-medium">Failed</span>
+                        )}
+                        {(!status || status === "idle") && checked && (
+                          <span className="text-[10px] text-muted-foreground">Selected</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  {checked && (
-                    <div className="flex items-center justify-center size-5 rounded-full bg-primary text-white">
-                      <Check className="size-3" />
+                    {checked && (
+                      <div className="flex items-center justify-center size-5 rounded-full bg-primary text-white shrink-0">
+                        <Check className="size-3" />
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Style pills — shown when platform is selected */}
+                  {checked && styles && !generating && (
+                    <div className="px-3.5 pb-3.5 pt-0 flex flex-wrap gap-1.5 border-t border-primary/10 mt-0">
+                      {styles.map((s) => {
+                        const isActive = activeStyle === s.id
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => setStyle(platform.id, s.id)}
+                            className={`text-[10px] font-medium px-2 py-1 rounded-full transition-all ${
+                              isActive
+                                ? "bg-primary text-white shadow-sm"
+                                : "bg-primary/5 text-primary hover:bg-primary/10"
+                            }`}
+                          >
+                            {s.label}
+                          </button>
+                        )
+                      })}
                     </div>
                   )}
-                </button>
+                </div>
               )
             })}
           </div>
