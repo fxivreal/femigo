@@ -110,7 +110,54 @@ export async function POST(request: Request) {
       return NextResponse.json({ title, content })
     }
 
-    return NextResponse.json({ error: "Unsupported type. Use 'article' or 'youtube'." }, { status: 400 })
+    if (type === "pdf") {
+      try {
+        const res = await fetch(url, {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; Femigo/1.0)" },
+        })
+        if (!res.ok) {
+          return NextResponse.json(
+            { error: `Failed to fetch PDF (${res.status}). The URL may be invalid or blocked.` },
+            { status: 422 }
+          )
+        }
+
+        const contentType = res.headers.get("content-type") || ""
+        if (!contentType.includes("pdf") && !contentType.includes("application/octet-stream")) {
+          return NextResponse.json(
+            { error: "URL does not point to a PDF file." },
+            { status: 422 }
+          )
+        }
+
+        const buffer = Buffer.from(await res.arrayBuffer())
+        const pdfParse = (await import("pdf-parse")).default
+        const data = await pdfParse(buffer)
+
+        if (!data.text || !data.text.trim()) {
+          return NextResponse.json(
+            { error: "Could not extract any text from this PDF. It may be scanned or image-based." },
+            { status: 422 }
+          )
+        }
+
+        const title =
+          data.info?.Title ||
+          url.split("/").pop()?.replace(/\.pdf$/i, "") ||
+          "Untitled PDF"
+
+        return NextResponse.json({ title, content: data.text.trim() })
+      } catch (innerErr) {
+        const msg = innerErr instanceof Error ? innerErr.message : String(innerErr)
+        console.error("PDF extraction error:", msg)
+        return NextResponse.json(
+          { error: "Failed to extract PDF content. Try pasting the text directly instead." },
+          { status: 500 }
+        )
+      }
+    }
+
+    return NextResponse.json({ error: "Unsupported type. Use 'article', 'youtube', or 'pdf'." }, { status: 400 })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to extract content."
     console.error("Extract route error:", message)

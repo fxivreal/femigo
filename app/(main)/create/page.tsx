@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
-import { Sparkles, FileText, Loader2, X, Link, Play, Check, ChevronRight, Target, RefreshCw } from "lucide-react"
+import { Sparkles, FileText, Loader2, X, Link, Play, File as FileIcon, Check, ChevronRight, Target, RefreshCw } from "lucide-react"
 import { GenerationProgress } from "@/components/generation-progress"
 import { ContentActions } from "@/components/content-actions"
 
@@ -17,6 +17,7 @@ const inputTabs = [
   { id: "text", label: "Text", icon: FileText },
   { id: "article", label: "Article URL", icon: Link },
   { id: "youtube", label: "YouTube URL", icon: Play },
+  { id: "pdf", label: "PDF URL", icon: FileIcon },
 ]
 
 type PlatformDef = {
@@ -37,7 +38,7 @@ type PlatformStatus = "idle" | "generating" | "done" | "error"
 
 export default function CreatePage() {
   const { user } = useAuth()
-  const [inputTab, setInputTab] = useState<"text" | "article" | "youtube">("text")
+  const [inputTab, setInputTab] = useState<"text" | "article" | "youtube" | "pdf">("text")
   const [content, setContent] = useState("")
   const [url, setUrl] = useState("")
   const [extractedTitle, setExtractedTitle] = useState("")
@@ -125,7 +126,7 @@ export default function CreatePage() {
     }
   }
 
-  const handleTabChange = (tab: "text" | "article" | "youtube") => {
+  const handleTabChange = (tab: "text" | "article" | "youtube" | "pdf") => {
     setInputTab(tab)
     setUrl("")
     setExtractedTitle("")
@@ -431,25 +432,29 @@ export default function CreatePage() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>
-            {inputTab === "text" ? "Content Source" : inputTab === "article" ? "Article URL" : "YouTube URL"}
+            {inputTab === "text" ? "Content Source" : inputTab === "article" ? "Article URL" : inputTab === "youtube" ? "YouTube URL" : "PDF URL"}
           </CardTitle>
           <CardDescription>
             {inputTab === "text"
               ? "Paste your blog post, article, newsletter, or transcript."
               : inputTab === "article"
               ? "Enter a blog or article URL to extract its content."
-              : "Paste any YouTube video link to extract its transcript."}
+              : inputTab === "youtube"
+              ? "Paste any YouTube video link to extract its transcript."
+              : "Enter a PDF URL to extract its text content."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {(inputTab === "article" || inputTab === "youtube") && (
+          {(inputTab === "article" || inputTab === "youtube" || inputTab === "pdf") && (
             <>
               <div className="flex gap-2">
                 <Input
                   placeholder={
                     inputTab === "article"
                       ? "https://example.com/article"
-                      : "https://www.youtube.com/watch?v=..."
+                      : inputTab === "youtube"
+                      ? "https://www.youtube.com/watch?v=..."
+                      : "https://example.com/document.pdf"
                   }
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
@@ -472,6 +477,11 @@ export default function CreatePage() {
                   Works with youtube.com/watch?v=..., youtu.be/..., and other YouTube URL formats.
                 </p>
               )}
+              {inputTab === "pdf" && (
+                <p className="text-xs text-muted-foreground">
+                  Direct PDF URLs only (ending in .pdf). Works best with text-based PDFs, not scanned documents.
+                </p>
+              )}
               {extractedTitle && (
                 <div className="rounded-lg bg-muted/50 border px-3 py-2">
                   <p className="text-xs text-muted-foreground">Extracted title</p>
@@ -488,6 +498,7 @@ export default function CreatePage() {
                 ? "Extracting content..."
                 : "Extracted content will appear here. You can edit it before generating."
             }
+            disabled={extracting}
             className="min-h-[250px] sm:min-h-[350px] resize-y focus-visible:ring-primary/20"
             value={content}
             onChange={(e) => setContent(e.target.value)}
