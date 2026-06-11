@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
+import { Loader2, ArrowLeft, MailCheck } from "lucide-react"
 
 export function ForgotPasswordForm() {
   const [loading, setLoading] = useState(false)
@@ -43,8 +44,13 @@ export function ForgotPasswordForm() {
 
   if (sent) {
     return (
-      <Card className="w-full max-w-md">
-        <CardHeader>
+      <Card className="w-full max-w-md animate-fade-in">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-3">
+            <div className="flex items-center justify-center size-12 rounded-full bg-emerald-50 text-emerald-600">
+              <MailCheck className="size-6" />
+            </div>
+          </div>
           <CardTitle>Check your email</CardTitle>
           <CardDescription>
             We&apos;ve sent a password reset link to your email.
@@ -53,8 +59,9 @@ export function ForgotPasswordForm() {
         <CardContent>
           <Link
             href="/login"
-            className={cn(buttonVariants({ variant: "outline" }), "w-full")}
+            className={buttonVariants({ variant: "outline", className: "w-full" })}
           >
+            <ArrowLeft className="size-4 mr-1.5" />
             Back to sign in
           </Link>
         </CardContent>
@@ -63,7 +70,7 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-md animate-fade-in">
       <CardHeader>
         <CardTitle>Forgot password?</CardTitle>
         <CardDescription>
@@ -74,18 +81,33 @@ export function ForgotPasswordForm() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="john@example.com" {...register("email")} />
-            {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+            <Input
+              id="email"
+              type="email"
+              placeholder="john@example.com"
+              className={cn(errors.email && "border-destructive focus-visible:ring-destructive/20")}
+              {...register("email")}
+            />
+            {errors.email && (
+              <p className="text-xs text-destructive">{errors.email.message}</p>
+            )}
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Sending..." : "Send reset link"}
+          <Button type="submit" className="w-full bg-[#1877F2] hover:bg-[#1877F2]/80 text-white" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="size-4 mr-1.5 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              "Send reset link"
+            )}
           </Button>
         </form>
-        <p className="mt-4 text-center text-sm text-muted-foreground">
+        <p className="mt-4 text-center text-xs text-muted-foreground">
           Remember your password?{" "}
-          <a href="/login" className="font-medium underline underline-offset-4 hover:text-primary">
+          <Link href="/login" className="font-medium text-[#1877F2] hover:underline">
             Sign in
-          </a>
+          </Link>
         </p>
       </CardContent>
     </Card>

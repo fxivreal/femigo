@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { GoogleButton } from "@/components/auth/google-button"
 import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
 
 export function SignupForm() {
   const router = useRouter()
@@ -50,7 +51,7 @@ export function SignupForm() {
   }
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-md animate-fade-in">
       <CardHeader>
         <CardTitle>Create an account</CardTitle>
         <CardDescription>Enter your details to get started</CardDescription>
@@ -59,24 +60,54 @@ export function SignupForm() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
-            <Input id="name" placeholder="Enter your name" {...register("name")} />
-            {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+            <Input
+              id="name"
+              placeholder="Enter your name"
+              className={cn(errors.name && "border-destructive focus-visible:ring-destructive/20")}
+              {...register("name")}
+            />
+            {errors.name && (
+              <p className="text-xs text-destructive">{errors.name.message}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="john@example.com" {...register("email")} />
-            {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+            <Input
+              id="email"
+              type="email"
+              placeholder="john@example.com"
+              className={cn(errors.email && "border-destructive focus-visible:ring-destructive/20")}
+              {...register("email")}
+            />
+            {errors.email && (
+              <p className="text-xs text-destructive">{errors.email.message}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" placeholder="Enter your password" {...register("password")} />
-            {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
+            <Input
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              className={cn(errors.password && "border-destructive focus-visible:ring-destructive/20")}
+              {...register("password")}
+            />
+            {errors.password && (
+              <p className="text-xs text-destructive">{errors.password.message}</p>
+            )}
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating account..." : "Create account"}
+          <Button type="submit" className="w-full bg-[#1877F2] hover:bg-[#1877F2]/80 text-white" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="size-4 mr-1.5 animate-spin" />
+                Creating account...
+              </>
+            ) : (
+              "Create account"
+            )}
           </Button>
         </form>
-        <div className="relative my-4">
+        <div className="relative my-5">
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t" />
           </div>
@@ -85,12 +116,12 @@ export function SignupForm() {
           </div>
         </div>
         <GoogleButton />
-        <Link
-          href="/login"
-          className={cn(buttonVariants({ variant: "outline" }), "w-full mt-4")}
-        >
-          Sign in
-        </Link>
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          Already have an account?{" "}
+          <Link href="/login" className="font-medium text-[#1877F2] hover:underline">
+            Sign in
+          </Link>
+        </p>
       </CardContent>
     </Card>
   )

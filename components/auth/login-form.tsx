@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { GoogleButton } from "@/components/auth/google-button"
 import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
 
 export function LoginForm() {
   const router = useRouter()
@@ -44,7 +45,7 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-md animate-fade-in">
       <CardHeader>
         <CardTitle>Welcome back</CardTitle>
         <CardDescription>Sign in to your account</CardDescription>
@@ -53,24 +54,47 @@ export function LoginForm() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="john@example.com" {...register("email")} />
-            {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+            <Input
+              id="email"
+              type="email"
+              placeholder="john@example.com"
+              className={cn(errors.email && "border-destructive focus-visible:ring-destructive/20")}
+              {...register("email")}
+            />
+            {errors.email && (
+              <p className="text-xs text-destructive">{errors.email.message}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" placeholder="Enter your password" {...register("password")} />
-            {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
+            <Input
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              className={cn(errors.password && "border-destructive focus-visible:ring-destructive/20")}
+              {...register("password")}
+            />
+            {errors.password && (
+              <p className="text-xs text-destructive">{errors.password.message}</p>
+            )}
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
+          <Button type="submit" className="w-full bg-[#1877F2] hover:bg-[#1877F2]/80 text-white" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="size-4 mr-1.5 animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              "Sign in"
+            )}
           </Button>
         </form>
         <div className="flex justify-end mt-1">
-          <a href="/forgot-password" className="text-sm underline underline-offset-4 hover:text-primary">
+          <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-[#1877F2] transition-colors">
             Forgot password?
-          </a>
+          </Link>
         </div>
-        <div className="relative my-4">
+        <div className="relative my-5">
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t" />
           </div>
@@ -79,12 +103,12 @@ export function LoginForm() {
           </div>
         </div>
         <GoogleButton />
-        <Link
-          href="/signup"
-          className={cn(buttonVariants({ variant: "outline" }), "w-full mt-4")}
-        >
-          Sign up
-        </Link>
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="font-medium text-[#1877F2] hover:underline">
+            Sign up
+          </Link>
+        </p>
       </CardContent>
     </Card>
   )

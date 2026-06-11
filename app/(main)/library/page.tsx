@@ -4,8 +4,11 @@ import { useState, useEffect } from "react"
 import { getDbInstance } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "sonner"
-import { ChevronDown, ChevronUp, Trash2, Loader2 } from "lucide-react"
+import { ChevronDown, ChevronUp, Trash2, Loader2, Library, Sparkles, ExternalLink } from "lucide-react"
+import { Skeleton } from "@/components/skeleton"
+import Link from "next/link"
 
 type ContentSource = {
   id: string
@@ -20,12 +23,12 @@ type GeneratedItem = {
   content: string
 }
 
-const platformColors: Record<string, string> = {
-  linkedin: "bg-[#0A66C2]/10 text-[#0A66C2]",
-  x: "bg-neutral-900/10 text-neutral-900",
-  facebook: "bg-[#1877F2]/10 text-[#1877F2]",
-  instagram: "bg-[#E4405F]/10 text-[#E4405F]",
-  tiktok: "bg-neutral-900/10 text-neutral-900",
+const platformColors: Record<string, { bg: string; text: string; label: string }> = {
+  linkedin: { bg: "bg-[#0A66C2]/10", text: "text-[#0A66C2]", label: "LinkedIn" },
+  x: { bg: "bg-neutral-900/10", text: "text-neutral-900", label: "X" },
+  facebook: { bg: "bg-[#1877F2]/10", text: "text-[#1877F2]", label: "Facebook" },
+  instagram: { bg: "bg-[#E4405F]/10", text: "text-[#E4405F]", label: "Instagram" },
+  tiktok: { bg: "bg-neutral-900/10", text: "text-neutral-900", label: "TikTok" },
 }
 
 export default function LibraryPage() {
@@ -39,7 +42,6 @@ export default function LibraryPage() {
 
   useEffect(() => {
     if (!user) return
-
     const fetchSources = async () => {
       setLoading(true)
       try {
@@ -62,7 +64,6 @@ export default function LibraryPage() {
         setLoading(false)
       }
     }
-
     fetchSources()
   }, [user])
 
@@ -142,25 +143,41 @@ export default function LibraryPage() {
     return cleaned.length > 60 ? cleaned.slice(0, 60) + "..." : cleaned
   }
 
-  const platformLabel = (p: string) => {
-    if (p === "x") return "X"
-    return p.charAt(0).toUpperCase() + p.slice(1)
-  }
-
   return (
-    <div className="p-4 sm:p-6 md:p-8 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-1">Library</h1>
+    <div className="p-4 sm:p-6 md:p-8 max-w-3xl mx-auto animate-fade-in">
+      <h1 className="text-2xl sm:text-3xl font-bold text-heading mb-1">Library</h1>
       <p className="text-sm text-muted-foreground mb-6">
         Browse your saved content and generations.
       </p>
 
       {loading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="rounded-xl border bg-card p-4 space-y-3">
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-3 w-1/3" />
+              <div className="flex gap-1.5">
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : sources.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-sm text-muted-foreground">No content yet.</p>
+        <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
+          <div className="flex items-center justify-center size-14 rounded-xl bg-[#1877F2]/10 text-[#1877F2] mb-4">
+            <Library className="size-6" />
+          </div>
+          <h2 className="text-lg font-semibold text-foreground mb-1">No content yet</h2>
+          <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+            Create your first piece of content and it will appear here.
+          </p>
+          <Link href="/create">
+            <Button className="bg-[#1877F2] hover:bg-[#1877F2]/80 text-white">
+              <Sparkles className="size-4 mr-1.5" />
+              Create content
+            </Button>
+          </Link>
         </div>
       ) : (
         <div className="space-y-3">
@@ -169,12 +186,14 @@ export default function LibraryPage() {
             return (
               <div
                 key={source.id}
-                className="border rounded-lg bg-card overflow-hidden"
+                className={`rounded-xl border bg-card overflow-hidden transition-all ${
+                  isOpen ? "shadow-md" : "hover:shadow-sm hover:border-foreground/20"
+                }`}
               >
                 <button
                   type="button"
                   onClick={() => handleToggle(source.id)}
-                  className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+                  className="w-full flex items-start gap-3 px-4 py-3.5 text-left transition-colors"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">
@@ -185,18 +204,22 @@ export default function LibraryPage() {
                     </p>
                     {source.platforms && source.platforms.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {source.platforms.map((p) => (
-                          <span
-                            key={p}
-                            className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full capitalize ${platformColors[p] || "bg-muted text-muted-foreground"}`}
-                          >
-                            {platformLabel(p)}
-                          </span>
-                        ))}
+                        {source.platforms.map((p) => {
+                          const pc = platformColors[p]
+                          if (!pc) return null
+                          return (
+                            <span
+                              key={p}
+                              className={`inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full ${pc.bg} ${pc.text}`}
+                            >
+                              {pc.label}
+                            </span>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0 pt-1">
+                  <div className="flex items-center gap-0.5 shrink-0 pt-1">
                     <Button
                       size="sm"
                       variant="ghost"
@@ -205,40 +228,53 @@ export default function LibraryPage() {
                         handleDelete(source)
                       }}
                       disabled={deleting === source.id}
+                      className="h-8 w-8 p-0"
                     >
                       {deleting === source.id ? (
-                        <Loader2 className="size-4 animate-spin" />
+                        <Loader2 className="size-4 animate-spin text-muted-foreground" />
                       ) : (
-                        <Trash2 className="size-4 text-destructive" />
+                        <Trash2 className="size-4 text-destructive/70 hover:text-destructive" />
                       )}
                     </Button>
-                    {isOpen ? (
-                      <ChevronUp className="size-4 text-muted-foreground mr-1" />
-                    ) : (
-                      <ChevronDown className="size-4 text-muted-foreground mr-1" />
-                    )}
+                    <div className="flex items-center justify-center size-8 text-muted-foreground">
+                      {isOpen ? (
+                        <ChevronUp className="size-4" />
+                      ) : (
+                        <ChevronDown className="size-4" />
+                      )}
+                    </div>
                   </div>
                 </button>
 
                 {isOpen && (
-                  <div className="border-t">
+                  <div className="border-t animate-fade-in">
                     {loadingContent === source.id ? (
-                      <div className="flex justify-center py-8">
-                        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                      <div className="p-4 space-y-3">
+                        <div className="h-3 w-1/4 animate-skeleton rounded bg-foreground/5" />
+                        <div className="h-12 w-full animate-skeleton rounded bg-foreground/5" />
+                        <div className="h-3 w-1/4 animate-skeleton rounded bg-foreground/5" />
+                        <div className="h-12 w-full animate-skeleton rounded bg-foreground/5" />
                       </div>
                     ) : (
                       <div className="divide-y">
                         {source.platforms.map((platform) => {
+                          const pc = platformColors[platform]
                           const item = openContent[source.id]?.find(
                             (gc) => gc.platform === platform
                           )
                           return (
-                            <div key={platform} className="px-4 py-3">
-                              <p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${platformColors[platform] ? platformColors[platform].split(" ")[1] : "text-muted-foreground"}`}>
-                                {platformLabel(platform)}
-                              </p>
-                              <p className="text-sm whitespace-pre-wrap">
-                                {item?.content || "No content generated."}
+                            <div key={platform} className="px-4 py-3.5">
+                              <div className="flex items-center gap-2 mb-2">
+                                {pc && (
+                                  <span className={`inline-flex items-center text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${pc.bg} ${pc.text}`}>
+                                    {pc.label}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm whitespace-pre-wrap text-foreground leading-relaxed">
+                                {item?.content || (
+                                  <span className="text-muted-foreground italic">No content generated.</span>
+                                )}
                               </p>
                             </div>
                           )
