@@ -417,8 +417,8 @@ export default function CreatePage() {
               onClick={() => handleTabChange(tab.id as "text" | "article" | "youtube")}
               className={`flex items-center justify-center gap-1.5 flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
                 active
-                  ? "bg-background text-primary shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-primary text-white shadow-sm"
+                  : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               <Icon className="size-4" />
@@ -681,8 +681,8 @@ export default function CreatePage() {
                     onClick={() => setVariations(n)}
                     className={`text-xs font-medium px-2 py-1 rounded transition-colors ${
                       variations === n
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "bg-primary text-white"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                     }`}
                   >
                     {n}
