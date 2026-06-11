@@ -1,10 +1,15 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
+import { getDbInstance } from "@/lib/firebase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { User, Mail, LogOut, Sparkles, ShieldCheck } from "lucide-react"
+import { toast } from "sonner"
+import { User, Mail, LogOut, Sparkles, Save, Mic, Users, Hash, Ban } from "lucide-react"
 
 function Avatar({ name, email }: { name: string; email?: string | null }) {
   const initial = (name || email || "U").charAt(0).toUpperCase()
@@ -18,6 +23,61 @@ function Avatar({ name, email }: { name: string; email?: string | null }) {
 export default function AccountPage() {
   const { user, signOut } = useAuth()
   const router = useRouter()
+  const [bvTone, setBvTone] = useState("")
+  const [bvAudience, setBvAudience] = useState("")
+  const [bvKeywords, setBvKeywords] = useState("")
+  const [bvAvoid, setBvAvoid] = useState("")
+  const [bvLoading, setBvLoading] = useState(true)
+  const [bvSaving, setBvSaving] = useState(false)
+
+  // Load brand voice from Firestore
+  useEffect(() => {
+    if (!user) return
+    ;(async () => {
+      try {
+        const { doc, getDoc } = await import("firebase/firestore")
+        const db = await getDbInstance()
+        const snap = await getDoc(doc(db, "users", user.uid))
+        const data = snap.data()
+        if (data?.brandVoice) {
+          setBvTone(data.brandVoice.tone || "")
+          setBvAudience(data.brandVoice.audience || "")
+          setBvKeywords(data.brandVoice.keywords || "")
+          setBvAvoid(data.brandVoice.avoidKeywords || "")
+        }
+      } catch {
+        // silent
+      } finally {
+        setBvLoading(false)
+      }
+    })()
+  }, [user])
+
+  const handleSaveBrandVoice = async () => {
+    if (!user) return
+    setBvSaving(true)
+    try {
+      const { doc, setDoc } = await import("firebase/firestore")
+      const db = await getDbInstance()
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          brandVoice: {
+            tone: bvTone.trim(),
+            audience: bvAudience.trim(),
+            keywords: bvKeywords.trim(),
+            avoidKeywords: bvAvoid.trim(),
+          },
+        },
+        { merge: true }
+      )
+      toast.success("Brand voice saved!")
+    } catch {
+      toast.error("Failed to save brand voice.")
+    } finally {
+      setBvSaving(false)
+    }
+  }
 
   const handleSignOut = async () => {
     await signOut()
@@ -88,6 +148,73 @@ export default function AccountPage() {
               Active
             </span>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Brand Voice Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mic className="size-4" />
+            Brand Voice
+          </CardTitle>
+          <CardDescription>
+            Set your brand voice preferences. These will be applied to every generation.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
+              <Mic className="size-3" />
+              Tone
+            </label>
+            <Input
+              placeholder="e.g. Professional but approachable, witty, empathetic..."
+              value={bvTone}
+              onChange={(e) => setBvTone(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
+              <Users className="size-3" />
+              Target Audience
+            </label>
+            <Input
+              placeholder="e.g. Nigerian small business owners, Gen Z creators..."
+              value={bvAudience}
+              onChange={(e) => setBvAudience(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
+              <Hash className="size-3" />
+              Keywords to include
+            </label>
+            <Input
+              placeholder="e.g. affordable, local, reliable, customer-first..."
+              value={bvKeywords}
+              onChange={(e) => setBvKeywords(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
+              <Ban className="size-3" />
+              Words to avoid
+            </label>
+            <Input
+              placeholder="e.g. revolutionary, game-changer, synergy..."
+              value={bvAvoid}
+              onChange={(e) => setBvAvoid(e.target.value)}
+            />
+          </div>
+          <Button
+            onClick={handleSaveBrandVoice}
+            disabled={bvSaving}
+            className="bg-primary hover:bg-primary/80 text-white"
+          >
+            <Save className="size-4 mr-2" />
+            {bvSaving ? "Saving..." : "Save Brand Voice"}
+          </Button>
         </CardContent>
       </Card>
 

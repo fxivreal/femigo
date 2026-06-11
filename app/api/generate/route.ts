@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
-import { platformPrompts, platformStyles } from "@/lib/prompts"
+import { platformPrompts, platformStyles, getGoalInstruction, formatBrandVoice } from "@/lib/prompts"
 import { getAIProvider, AIError } from "@/lib/ai"
+
+export const runtime = "nodejs"
+export const maxDuration = 60
 
 const PLACEHOLDER_KEY = "sk-your-key-here"
 
@@ -119,7 +122,9 @@ async function generateForPlatform(
   content: string,
   prompts: Record<string, string> | undefined,
   mock: boolean,
-  styles?: Record<string, string>
+  styles?: Record<string, string>,
+  goalInstruction?: string,
+  brandVoiceInstruction?: string
 ) {
   const prompt = platformPrompts[platform]
   if (!prompt) {
@@ -127,9 +132,11 @@ async function generateForPlatform(
   }
 
   const styleInstruction = getStyleInstruction(platform, styles?.[platform])
-  const systemPrompt = styleInstruction
-    ? prompt.system + "\n\nStyle: " + styleInstruction
-    : prompt.system
+  const parts = [prompt.system]
+  if (goalInstruction) parts.push("\n" + goalInstruction)
+  if (brandVoiceInstruction) parts.push("\n" + brandVoiceInstruction)
+  if (styleInstruction) parts.push("\nStyle: " + styleInstruction)
+  const systemPrompt = parts.join("\n\n")
 
   const userMessage = (prompts && prompts[platform]) || prompt.user(content)
 
@@ -156,9 +163,13 @@ async function generateForPlatform(
   }
 }
 
+export async function GET() {
+  return NextResponse.json({ status: "ok", provider: process.env.AI_PROVIDER || "not-set" })
+}
+
 export async function POST(request: Request) {
   try {
-    const { content, platforms, prompts, styles } = await request.json()
+    const { content, platforms, prompts, styles, goal, brandVoice, variations } = await request.json()
 
     if (!content || !platforms || !Array.isArray(platforms) || platforms.length === 0) {
       return NextResponse.json(
@@ -168,6 +179,9 @@ export async function POST(request: Request) {
     }
 
     const mock = isMockMode()
+    const goalInstruction = getGoalInstruction(goal)
+    const brandVoiceInstruction = formatBrandVoice(brandVoice)
+    const variationCount = Math.min(Math.max(variations || 1, 1), 3)
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -179,16 +193,41 @@ export async function POST(request: Request) {
         try {
           send({ type: "start", step: "analyzing" })
 
-          for (const platform of platforms) {
-            send({ type: "start", platform })
+          if (variationCount > 1) {
+            for (const platform of platforms) {
+              for (let v = 1; v <= variationCount; v++) {
+                send({ type: "start", platform, variation: v })
+              }
+            }
+          } else {
+            for (const platform of platforms) {
+              send({ type: "start", platform })
+            }
           }
 
           await new Promise((r) => setTimeout(r, 100))
 
-          const promises = platforms.map(async (platform) => {
-            const result = await generateForPlatform(platform, content, prompts, mock, styles)
-            send({ type: "result", platform: result.platform, content: result.content, error: result.error })
-            return result
+          const promises = platforms.flatMap((platform) => {
+            const runs = Array.from({ length: variationCount }, (_, i) => i + 1)
+            return runs.map(async (variation) => {
+              const result = await generateForPlatform(
+                platform,
+                content,
+                prompts,
+                mock,
+                styles,
+                goalInstruction,
+                brandVoiceInstruction
+              )
+              send({
+                type: "result",
+                platform: result.platform,
+                content: result.content,
+                error: result.error,
+                variation,
+              })
+              return { ...result, variation }
+            })
           })
 
           await Promise.allSettled(promises)
@@ -207,9 +246,11 @@ export async function POST(request: Request) {
         "Cache-Control": "no-cache",
       },
     })
-  } catch {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error"
+    console.error("Generate route error:", message)
     return NextResponse.json(
-      { error: "Failed to generate content" },
+      { error: "Failed to generate content", detail: process.env.NODE_ENV === "development" ? message : undefined },
       { status: 500 }
     )
   }

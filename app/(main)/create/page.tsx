@@ -1,15 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { getDbInstance } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
-import { platformPrompts, platformStyles } from "@/lib/prompts"
+import { platformPrompts, platformStyles, goalInstructions, type ContentGoal } from "@/lib/prompts"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
-import { Sparkles, FileText, Loader2, X, Link, Play, Check, ChevronRight } from "lucide-react"
+import { Sparkles, FileText, Loader2, X, Link, Play, Check, ChevronRight, Target, RefreshCw } from "lucide-react"
 import { GenerationProgress } from "@/components/generation-progress"
 import { ContentActions } from "@/components/content-actions"
 
@@ -45,7 +45,7 @@ export default function CreatePage() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([])
   const [generating, setGenerating] = useState(false)
   const [platformStatuses, setPlatformStatuses] = useState<Record<string, PlatformStatus>>({})
-  const [generatedResults, setGeneratedResults] = useState<Record<string, string>>({})
+  const [generatedResults, setGeneratedResults] = useState<Record<string, string[]>>({})
   const [showResults, setShowResults] = useState(false)
   const [showProgress, setShowProgress] = useState(false)
   const [startedPlatforms, setStartedPlatforms] = useState<Set<string>>(new Set())
@@ -56,6 +56,46 @@ export default function CreatePage() {
   const [editPromptText, setEditPromptText] = useState("")
   const [platformStylesState, setPlatformStylesState] = useState<Record<string, string>>({})
   const [regenerating, setRegenerating] = useState(false)
+
+  const [goal, setGoal] = useState<string>("")
+  const [variations, setVariations] = useState(1)
+  const [brandVoice, setBrandVoice] = useState<{
+    tone?: string
+    audience?: string
+    keywords?: string
+    avoidKeywords?: string
+  } | null>(null)
+
+  // Load brand voice from Firestore on mount
+  useEffect(() => {
+    if (!user) return
+    ;(async () => {
+      try {
+        const { doc, getDoc } = await import("firebase/firestore")
+        const db = await getDbInstance()
+        const snap = await getDoc(doc(db, "users", user.uid))
+        const data = snap.data()
+        if (data?.brandVoice) {
+          setBrandVoice(data.brandVoice)
+        }
+      } catch {
+        // silent
+      }
+    })()
+  }, [user])
+
+  // Store results as array per platform (supports variations)
+  const setPlatformResult = (platform: string, content: string, variation?: number) => {
+    setGeneratedResults((prev) => {
+      const existing = prev[platform] || []
+      const idx = variation ? variation - 1 : 0
+      const next = [...existing]
+      next[idx] = content
+      return { ...prev, [platform]: next }
+    })
+  }
+
+  const [selectedVariation, setSelectedVariation] = useState<Record<string, number>>({})
 
   const getDefaultStyle = (platform: string): string => {
     const styles = platformStyles[platform]
@@ -156,6 +196,9 @@ export default function CreatePage() {
           platforms: promptOverrides ? Object.keys(promptOverrides) : selectedPlatforms,
           styles: promptOverrides ? undefined : platformStylesState,
           prompts: promptOverrides,
+          goal: goal || undefined,
+          brandVoice: brandVoice || undefined,
+          variations: variations > 1 ? variations : undefined,
         }),
       })
 
@@ -168,7 +211,7 @@ export default function CreatePage() {
       if (!contentType.includes("text/plain")) {
         const data = await res.json()
         const updatedStatuses = { ...statuses }
-        const resultsMap: Record<string, string> = promptOverrides ? { ...generatedResults } : {}
+        const resultsMap: Record<string, string[]> = {}
         let hasContent = false
 
         for (const result of data.results as { platform: string; content: string; error?: string }[]) {
@@ -181,7 +224,7 @@ export default function CreatePage() {
             updatedStatuses[result.platform] = "idle"
             continue
           }
-          resultsMap[result.platform] = result.content
+          resultsMap[result.platform] = [result.content]
           updatedStatuses[result.platform] = "done"
           hasContent = true
         }
@@ -207,7 +250,7 @@ export default function CreatePage() {
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
       let buffer = ""
-      const resultsMap: Record<string, string> = {}
+      const resultsMap: Record<string, string[]> = {}
       let hasContent = false
 
       while (true) {
@@ -243,9 +286,11 @@ export default function CreatePage() {
                 toast.error(`Failed to generate ${event.platform} content.`)
               } else if (event.content) {
                 const p = event.platform as string
-                resultsMap[p] = event.content as string
+                const v = (event.variation as number) || 1
+                if (!resultsMap[p]) resultsMap[p] = []
+                resultsMap[p][v - 1] = event.content as string
+                setPlatformResult(p, event.content as string, v)
                 setCompletedPlatforms((prev) => new Set([...prev, p]))
-                setGeneratedResults((prev) => ({ ...prev, [p]: event.content as string }))
                 hasContent = true
               }
               break
@@ -291,7 +336,7 @@ export default function CreatePage() {
     }
   }
 
-  const saveToFirestore = async (results: Record<string, string> | { platform: string; content: string; error?: string }[]) => {
+  const saveToFirestore = async (results: Record<string, string[]> | { platform: string; content: string; error?: string }[]) => {
     if (!user) return
     try {
       const { addDoc, collection, serverTimestamp } = await import("firebase/firestore")
@@ -302,6 +347,7 @@ export default function CreatePage() {
         platforms: selectedPlatforms,
         styles: platformStylesState,
         sourceType: inputTab,
+        goal: goal || null,
         createdAt: serverTimestamp(),
       }
       if (inputTab !== "text") {
@@ -313,7 +359,7 @@ export default function CreatePage() {
 
       const items = Array.isArray(results)
         ? results.filter((r) => r.content && !r.error)
-        : Object.entries(results).map(([platform, content]) => ({ platform, content }))
+        : Object.entries(results).map(([platform, contents]) => ({ platform, content: contents[0] || "" })).filter((r) => r.content)
 
       const genResults = await Promise.allSettled(
         items.map((r) =>
@@ -548,6 +594,54 @@ export default function CreatePage() {
         </CardContent>
       </Card>
 
+      {/* Content Goal */}
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Target className="size-4" />
+            Content Goal
+          </CardTitle>
+          <CardDescription>What should this content achieve?</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setGoal("")}
+              className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
+                !goal
+                  ? "bg-primary text-white shadow-sm"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              None
+            </button>
+            {(Object.entries(goalInstructions) as [ContentGoal, string][]).map(
+              ([key, instruction]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setGoal(key)}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
+                    goal === key
+                      ? "bg-primary text-white shadow-sm"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                  title={instruction.split("\n")[0]}
+                >
+                  {key.charAt(0).toUpperCase() + key.slice(1)}
+                </button>
+              )
+            )}
+          </div>
+          {goal && (
+            <p className="text-xs text-muted-foreground mt-2 ml-0.5">
+              {goalInstructions[goal as ContentGoal]}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Generate Button */}
       <div className="flex items-center gap-3 mb-8">
         <Button
@@ -564,9 +658,31 @@ export default function CreatePage() {
           {generating ? "Generating..." : `Generate (${selectedPlatforms.length})`}
         </Button>
         {selectedPlatforms.length > 0 && !generating && (
-          <span className="text-xs text-muted-foreground">
-            {selectedPlatforms.length} platform{selectedPlatforms.length > 1 ? "s" : ""} selected
-          </span>
+          <div className="flex items-center gap-3">
+            {/* Variations selector */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Variations:</span>
+              <div className="flex gap-0.5">
+                {[1, 2, 3].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setVariations(n)}
+                    className={`text-xs font-medium px-2 py-1 rounded transition-colors ${
+                      variations === n
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {selectedPlatforms.length} platform{selectedPlatforms.length > 1 ? "s" : ""} selected
+            </span>
+          </div>
         )}
       </div>
 
@@ -588,7 +704,9 @@ export default function CreatePage() {
           {selectedPlatforms.map((platformId) => {
             const platform = platforms.find((p) => p.id === platformId)
             if (!platform) return null
-            const result = generatedResults[platformId]
+            const results = generatedResults[platformId] || []
+            const currentVar = selectedVariation[platformId] || 0
+            const result = results[currentVar] || ""
             const status = platformStatuses[platformId]
             if (status === "idle" || !status) return null
 
@@ -602,6 +720,30 @@ export default function CreatePage() {
                         {platformStyles[platformId]?.find((s) => s.id === platformStylesState[platformId])?.label}
                       </span>
                     )}
+                    {/* Variation tabs */}
+                    {results.length > 1 && (
+                      <div className="flex gap-0.5 ml-1">
+                        {results.map((_, vi) => (
+                          <button
+                            key={vi}
+                            type="button"
+                            onClick={() =>
+                              setSelectedVariation((prev) => ({
+                                ...prev,
+                                [platformId]: vi,
+                              }))
+                            }
+                            className={`text-[10px] font-medium px-1.5 py-0.5 rounded transition-colors ${
+                              currentVar === vi
+                                ? "bg-primary text-white"
+                                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                            }`}
+                          >
+                            V{vi + 1}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   {status === "generating" && (
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -611,7 +753,7 @@ export default function CreatePage() {
                   )}
                   {status === "done" && (
                     <ContentActions
-                      content={result || ""}
+                      content={result}
                       platformLabel={platform.label}
                       showRegenerate
                       onRegenerate={() => handleEditPrompt(platformId)}

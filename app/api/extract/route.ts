@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server"
 
 export const runtime = "nodejs"
+export const maxDuration = 30
+
+export async function GET() {
+  return NextResponse.json({ status: "ok" })
+}
 
 export async function POST(request: Request) {
   try {

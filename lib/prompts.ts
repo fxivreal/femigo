@@ -31,9 +31,59 @@ type PlatformPrompt = {
   user: (content: string) => string
 }
 
+export const sourceFidelityRule =
+  "CRITICAL: Stick to facts present in the source content. Do not add ingredients, statistics, claims, or anecdotes not found in the source. If a detail isn't in the source, don't invent it. Accuracy over creativity."
+
+export const hashtagRule =
+  "MANDATORY: End with exactly 3\u20135 relevant hashtags on their own line at the bottom."
+
+export const valuePropInstruction =
+  "Identify the key facts, benefits, and differentiators in the source. Preserve those specifics in your output \u2014 do not trade substance for fluff."
+
+export const goalInstructions = {
+  educate:
+    "GOAL: Educate your audience. Break down the topic clearly. Explain how it works, why it matters, and what to do with the information. Use examples. End with a key takeaway.",
+  engage:
+    "GOAL: Drive conversation. Ask a specific question. Share a relatable observation. Make the audience want to reply, comment, or tag someone. Prioritize discussion over information density.",
+  sell: "GOAL: Drive interest in a product or service. Highlight features and benefits. Include social proof or results where available. End with a clear next step (visit, buy, try, sign up). Be persuasive without being pushy.",
+  authority:
+    "GOAL: Build thought leadership. Take a stance. Challenge conventional thinking. Back your position with reasoning. End with a memorable insight that positions you as an expert.",
+} as const
+
+export type ContentGoal = keyof typeof goalInstructions
+
+export function getGoalInstruction(goal?: string): string {
+  return goal && goal in goalInstructions
+    ? goalInstructions[goal as ContentGoal]
+    : ""
+}
+
+export function formatBrandVoice(
+  bv?: {
+    tone?: string
+    audience?: string
+    keywords?: string
+    avoidKeywords?: string
+  } | null
+): string {
+  if (!bv) return ""
+  const parts: string[] = []
+  if (bv.tone) parts.push(`Tone: ${bv.tone}`)
+  if (bv.audience) parts.push(`Target audience: ${bv.audience}`)
+  if (bv.keywords)
+    parts.push(`Always include these keywords naturally: ${bv.keywords}`)
+  if (bv.avoidKeywords)
+    parts.push(`Never use these words: ${bv.avoidKeywords}`)
+  return parts.length
+    ? `BRAND VOICE:\n${parts.join("\n")}`
+    : ""
+}
+
 export const platformPrompts: Record<string, PlatformPrompt> = {
   linkedin: {
     system: [
+      sourceFidelityRule,
+      valuePropInstruction,
       "You are writing a LinkedIn post for professionals, founders, executives, and recruiters.",
       "Tone: professional, direct, insight-driven. Use storytelling when it serves the point.",
       "STRUCTURE: Strong opening hook → insight or lesson → clear takeaway.",
@@ -45,11 +95,13 @@ export const platformPrompts: Record<string, PlatformPrompt> = {
       "Use contractions. Vary sentence length. End with something worth remembering.",
     ].join("\n"),
     user: (content) =>
-      `Write a LinkedIn post from this content. Professional tone, real insight, clear takeaway:\n\n${content}`,
+      `Extract the key facts, benefits, and differentiators from this source. Then write a LinkedIn post that preserves those specifics. Professional tone, real insight, clear takeaway:\n\n${content}`,
   },
 
   x: {
     system: [
+      sourceFidelityRule,
+      valuePropInstruction,
       "You are writing an X thread. Each tweet must be under 280 characters.",
       "STRUCTURE:",
       "  1/ — Hook. Strong opinion or surprising statement. Make them stop scrolling.",
@@ -61,11 +113,13 @@ export const platformPrompts: Record<string, PlatformPrompt> = {
       "Avoid: long paragraphs, formal language, hedging (\"I think\", \"maybe\", \"sort of\").",
     ].join("\n"),
     user: (content) =>
-      `Turn this into an X thread. Hook hard, stay punchy, end with a question:\n\n${content}`,
+      `Extract the key facts and surprising angles from this source. Then turn it into an X thread. Hook hard, stay punchy, end with a question:\n\n${content}`,
   },
 
   facebook: {
     system: [
+      sourceFidelityRule,
+      valuePropInstruction,
       "You are writing a Facebook post — conversational, relatable, community-focused.",
       "Write like you're sharing something with people you actually know.",
       "Start with a personal observation or a short story. Make it feel like a real moment.",
@@ -75,29 +129,34 @@ export const platformPrompts: Record<string, PlatformPrompt> = {
       "Avoid: 'have you ever wondered', 'in today's world', 'drop a comment below'.",
     ].join("\n"),
     user: (content) =>
-      `Rewrite this as a Facebook post — like you're telling a friend about it:\n\n${content}`,
+      `Extract the relatable angle and key details from this source. Then rewrite as a Facebook post — like you're telling a friend about it:\n\n${content}`,
   },
 
   instagram: {
     system: [
+      sourceFidelityRule,
+      valuePropInstruction,
+      hashtagRule,
       "You are writing an Instagram caption. Attention-grabbing first line is mandatory.",
       "Short paragraphs. Line breaks between every 1–2 sentences for skimmability.",
       "Use emojis where they feel natural — not as bullet points.",
-      "Include a clear call to action and 3–5 relevant hashtags at the end.",
+      "Include a clear call to action before the hashtags.",
       "Tone: authentic creator, not a brand. Tell a short story, share a feeling.",
       "Keep it 50–150 words. No corporate tone. No long blocks of text.",
       "Avoid: 'elevate your', 'maximize your potential', 'seamlessly', hashtag spam.",
     ].join("\n"),
     user: (content) =>
-      `Write an Instagram caption that hooks in the first line and feels personal:\n\n${content}`,
+      `Extract the most interesting facts, benefits, and hooks from this source. Then write an Instagram caption that hooks in the first line, preserves those specifics, and feels personal:\n\n${content}`,
   },
 
   tiktok: {
     system: [
+      sourceFidelityRule,
+      valuePropInstruction,
       "You are writing a TikTok script — short-form vertical video, spoken aloud.",
       "STRUCTURE:",
-      "  HOOK — First 3 seconds. Stop the scroll. A question, a hot take, a surprising fact.",
-      "  MAIN POINTS — Fast pacing. One idea per 5–10 seconds. Conversational energy.",
+      "  HOOK — First 3 seconds. Stop the scroll. A question, a hot take, a surprising fact from the source.",
+      "  MAIN POINTS — Fast pacing. One idea per 5–10 seconds. Conversational energy. Include specifics from the source.",
       "  CALL TO ACTION — 'Follow for more', 'Comment your take', etc.",
       "Write for speech, not reading. Use natural spoken language, incomplete sentences, filler words where real.",
       "Include visual or text overlay cues in [brackets].",
@@ -105,15 +164,17 @@ export const platformPrompts: Record<string, PlatformPrompt> = {
       "Avoid: complete paragraphs, written-language grammar, corporate tone.",
     ].join("\n"),
     user: (content) =>
-      `Turn this into a TikTok script. Hook fast, keep it short, write for the ear:\n\n${content}`,
+      `Extract the most surprising or useful facts from this source. Then turn it into a TikTok script. Hook fast, keep it short, write for the ear:\n\n${content}`,
   },
 
   youtube_shorts: {
     system: [
+      sourceFidelityRule,
+      valuePropInstruction,
       "You are writing a YouTube Shorts script — vertical video, fast-paced, spoken.",
       "STRUCTURE:",
-      "  HOOK — First sentence. Grab attention immediately. No slow build.",
-      "  VALUE — Fast insights. One point at a time. Keep momentum.",
+      "  HOOK — First sentence. Grab attention immediately with a specific fact from the source. No slow build.",
+      "  VALUE — Fast insights. One point at a time. Keep momentum. Include specifics from the source.",
       "  CTA — 'Subscribe', 'Like', 'Follow for more'.",
       "Duration: 30–60 seconds spoken. Fast pacing throughout.",
       "Write for speech. Short sentences. Natural rhythm. Visual cues in [brackets].",
@@ -121,6 +182,6 @@ export const platformPrompts: Record<string, PlatformPrompt> = {
       "Sound like a creator who respects the viewer's time.",
     ].join("\n"),
     user: (content) =>
-      `Write a YouTube Shorts script from this. Hook in the first sentence, fast pacing, 30–60 seconds:\n\n${content}`,
+      `Extract the most compelling facts and insights from this source. Then write a YouTube Shorts script from it. Hook in the first sentence, fast pacing, 30–60 seconds:\n\n${content}`,
   },
 }
