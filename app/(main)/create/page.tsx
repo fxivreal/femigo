@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { Sparkles, FileText, Loader2, Copy, PenLine, X, Link, Play, Check, ChevronRight, ArrowLeft } from "lucide-react"
+import { GenerationProgress } from "@/components/generation-progress"
 
 const inputTabs = [
   { id: "text", label: "Text", icon: FileText },
@@ -45,6 +46,10 @@ export default function CreatePage() {
   const [platformStatuses, setPlatformStatuses] = useState<Record<string, PlatformStatus>>({})
   const [generatedResults, setGeneratedResults] = useState<Record<string, string>>({})
   const [showResults, setShowResults] = useState(false)
+  const [showProgress, setShowProgress] = useState(false)
+  const [startedPlatforms, setStartedPlatforms] = useState<Set<string>>(new Set())
+  const [completedPlatforms, setCompletedPlatforms] = useState<Set<string>>(new Set())
+  const [errorPlatforms, setErrorPlatforms] = useState<Set<string>>(new Set())
 
   const [editingPlatform, setEditingPlatform] = useState<string | null>(null)
   const [editPromptText, setEditPromptText] = useState("")
@@ -118,15 +123,20 @@ export default function CreatePage() {
     }
     if (!user) return
 
+    const targets = promptOverrides ? Object.keys(promptOverrides) : selectedPlatforms
+
     setGenerating(true)
-    setShowResults(true)
+    setShowResults(false)
+    setShowProgress(true)
+    setStartedPlatforms(new Set())
+    setCompletedPlatforms(new Set())
+    setErrorPlatforms(new Set())
 
     if (!promptOverrides) {
       setGeneratedResults({})
     }
 
     const statuses: Record<string, PlatformStatus> = {}
-    const targets = promptOverrides ? Object.keys(promptOverrides) : selectedPlatforms
     targets.forEach((p) => (statuses[p] = "generating"))
     setPlatformStatuses((prev) => ({ ...prev, ...statuses }))
 
@@ -145,29 +155,112 @@ export default function CreatePage() {
         throw new Error("Generation failed")
       }
 
-      const data = await res.json()
+      const contentType = res.headers.get("Content-Type") || ""
 
-      const updatedStatuses = { ...statuses }
-      const resultsMap: Record<string, string> = promptOverrides ? { ...generatedResults } : {}
-      let hasContent = false
+      if (!contentType.includes("text/plain")) {
+        const data = await res.json()
+        const updatedStatuses = { ...statuses }
+        const resultsMap: Record<string, string> = promptOverrides ? { ...generatedResults } : {}
+        let hasContent = false
 
-      for (const result of data.results as { platform: string; content: string; error?: string }[]) {
-        if (result.error) {
-          updatedStatuses[result.platform] = "error"
-          toast.error(`Failed to generate ${result.platform} content.`)
-          continue
+        for (const result of data.results as { platform: string; content: string; error?: string }[]) {
+          if (result.error) {
+            updatedStatuses[result.platform] = "error"
+            toast.error(`Failed to generate ${result.platform} content.`)
+            continue
+          }
+          if (!result.content) {
+            updatedStatuses[result.platform] = "idle"
+            continue
+          }
+          resultsMap[result.platform] = result.content
+          updatedStatuses[result.platform] = "done"
+          hasContent = true
         }
-        if (!result.content) {
-          updatedStatuses[result.platform] = "idle"
-          continue
+
+        setPlatformStatuses((prev) => ({ ...prev, ...updatedStatuses }))
+        setGeneratedResults(resultsMap)
+        setShowProgress(false)
+        setShowResults(true)
+
+        if (hasContent) {
+          toast.success("Content generated successfully!")
+        } else {
+          toast.error("Generation failed. Check your API key and billing.")
         }
-        resultsMap[result.platform] = result.content
-        updatedStatuses[result.platform] = "done"
-        hasContent = true
+
+        if (!promptOverrides) {
+          saveToFirestore(data.results)
+        }
+        return
       }
 
+      // Stream mode
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+      const resultsMap: Record<string, string> = {}
+      let hasContent = false
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() || ""
+
+        for (const line of lines) {
+          if (!line.trim()) continue
+
+          let event: Record<string, unknown>
+          try {
+            event = JSON.parse(line)
+          } catch {
+            continue
+          }
+
+          switch (event.type) {
+            case "start":
+              if (event.step === "analyzing") {
+                setCompletedPlatforms((prev) => new Set([...prev, "analyzing"]))
+              } else if (event.platform) {
+                setStartedPlatforms((prev) => new Set([...prev, event.platform as string]))
+              }
+              break
+
+            case "result":
+              if (event.error) {
+                setErrorPlatforms((prev) => new Set([...prev, event.platform as string]))
+                toast.error(`Failed to generate ${event.platform} content.`)
+              } else if (event.content) {
+                const p = event.platform as string
+                resultsMap[p] = event.content as string
+                setCompletedPlatforms((prev) => new Set([...prev, p]))
+                setGeneratedResults((prev) => ({ ...prev, [p]: event.content as string }))
+                hasContent = true
+              }
+              break
+
+            case "error":
+              toast.error(event.message as string || "Generation failed")
+              break
+          }
+        }
+      }
+
+      setShowProgress(false)
+      setShowResults(true)
+
+      const updatedStatuses: Record<string, PlatformStatus> = {}
+      for (const p of targets) {
+        if (errorPlatforms.has(p)) {
+          updatedStatuses[p] = "error"
+        } else if (resultsMap[p]) {
+          updatedStatuses[p] = "done"
+        }
+      }
       setPlatformStatuses((prev) => ({ ...prev, ...updatedStatuses }))
-      setGeneratedResults(resultsMap)
 
       if (hasContent) {
         toast.success("Content generated successfully!")
@@ -176,57 +269,61 @@ export default function CreatePage() {
       }
 
       if (!promptOverrides) {
-        const saveToFirestore = async () => {
-          try {
-            const { addDoc, collection, serverTimestamp } = await import("firebase/firestore")
-            const db = await getDbInstance()
-            const sourceData: Record<string, unknown> = {
-              userId: user.uid,
-              content: content.trim(),
-              platforms: selectedPlatforms,
-              sourceType: inputTab,
-              createdAt: serverTimestamp(),
-            }
-            if (inputTab !== "text") {
-              sourceData.sourceUrl = url.trim()
-              if (extractedTitle) sourceData.sourceTitle = extractedTitle
-            }
-
-            const sourceRef = await addDoc(collection(db, "contentSources"), sourceData)
-
-            const genResults = await Promise.allSettled(
-              data.results
-                .filter((r: { platform: string; content: string; error?: string }) => r.content && !r.error)
-                .map((r: { platform: string; content: string }) =>
-                  addDoc(collection(db, "generatedContent"), {
-                    userId: user.uid,
-                    sourceId: sourceRef.id,
-                    platform: r.platform,
-                    content: r.content,
-                    createdAt: serverTimestamp(),
-                  })
-                )
-            )
-
-            if (genResults.some((r) => r.status === "fulfilled")) {
-              const { updateUserMetrics } = await import("@/lib/metrics")
-              await updateUserMetrics(user.uid, selectedPlatforms)
-            }
-          } catch {
-            // Silent
-          }
-        }
-
-        saveToFirestore()
+        saveToFirestore(resultsMap)
       }
     } catch {
       toast.error("Failed to generate content. Please try again.")
       if (!promptOverrides) {
         setPlatformStatuses({})
+        setShowProgress(false)
       }
     } finally {
       setGenerating(false)
       setRegenerating(false)
+    }
+  }
+
+  const saveToFirestore = async (results: Record<string, string> | { platform: string; content: string; error?: string }[]) => {
+    if (!user) return
+    try {
+      const { addDoc, collection, serverTimestamp } = await import("firebase/firestore")
+      const db = await getDbInstance()
+      const sourceData: Record<string, unknown> = {
+        userId: user.uid,
+        content: content.trim(),
+        platforms: selectedPlatforms,
+        sourceType: inputTab,
+        createdAt: serverTimestamp(),
+      }
+      if (inputTab !== "text") {
+        sourceData.sourceUrl = url.trim()
+        if (extractedTitle) sourceData.sourceTitle = extractedTitle
+      }
+
+      const sourceRef = await addDoc(collection(db, "contentSources"), sourceData)
+
+      const items = Array.isArray(results)
+        ? results.filter((r) => r.content && !r.error)
+        : Object.entries(results).map(([platform, content]) => ({ platform, content }))
+
+      const genResults = await Promise.allSettled(
+        items.map((r) =>
+          addDoc(collection(db, "generatedContent"), {
+            userId: user.uid,
+            sourceId: sourceRef.id,
+            platform: r.platform,
+            content: r.content,
+            createdAt: serverTimestamp(),
+          })
+        )
+      )
+
+      if (genResults.some((r) => r.status === "fulfilled")) {
+        const { updateUserMetrics } = await import("@/lib/metrics")
+        await updateUserMetrics(user.uid, selectedPlatforms)
+      }
+    } catch {
+      // Silent
     }
   }
 
@@ -433,6 +530,18 @@ export default function CreatePage() {
           </span>
         )}
       </div>
+
+      {/* Progress */}
+      {showProgress && (
+        <div className="mb-6">
+          <GenerationProgress
+            platforms={selectedPlatforms}
+            startedPlatforms={startedPlatforms}
+            completedPlatforms={completedPlatforms}
+            errors={errorPlatforms}
+          />
+        </div>
+      )}
 
       {/* Results */}
       {showResults && (

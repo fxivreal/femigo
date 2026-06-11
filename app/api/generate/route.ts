@@ -70,6 +70,58 @@ function generateMockContent(platform: string, content: string) {
   }
 }
 
+function isMockMode() {
+  const providerType = (process.env.AI_PROVIDER || "gemini").toLowerCase()
+  const geminiKey = process.env.GEMINI_API_KEY || ""
+  const openaiKeys = (process.env.OPENAI_API_KEYS || "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean)
+
+  return (
+    (providerType === "openai" &&
+      (openaiKeys.length === 0 || openaiKeys[0] === PLACEHOLDER_KEY)) ||
+    (providerType === "gemini" &&
+      (!geminiKey || geminiKey === "your-gemini-api-key"))
+  )
+}
+
+async function generateForPlatform(
+  platform: string,
+  content: string,
+  prompts: Record<string, string> | undefined,
+  mock: boolean
+) {
+  const prompt = platformPrompts[platform]
+  if (!prompt) {
+    return { platform, content: null, error: `Unknown platform: ${platform}` }
+  }
+
+  const userMessage = (prompts && prompts[platform]) || prompt.user(content)
+
+  if (mock) {
+    return { platform, content: generateMockContent(platform, content) }
+  }
+
+  try {
+    const provider = getAIProvider()
+    const result = await provider.generate({
+      system: prompt.system,
+      user: userMessage,
+    })
+    return { platform, content: result }
+  } catch (err) {
+    if (err instanceof AIError && err.code === "QUOTA_EXHAUSTED") {
+      return {
+        platform,
+        content: generateMockContent(platform, content),
+        error: "Quota exhausted, using fallback.",
+      }
+    }
+    return { platform, content: generateMockContent(platform, content) }
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const { content, platforms, prompts } = await request.json()
@@ -81,58 +133,46 @@ export async function POST(request: Request) {
       )
     }
 
-    const providerType = (process.env.AI_PROVIDER || "gemini").toLowerCase()
-    const geminiKey = process.env.GEMINI_API_KEY || ""
-    const openaiKeys = (process.env.OPENAI_API_KEYS || "")
-      .split(",")
-      .map((k) => k.trim())
-      .filter(Boolean)
+    const mock = isMockMode()
 
-    const isMockMode =
-      (providerType === "openai" &&
-        (openaiKeys.length === 0 || openaiKeys[0] === PLACEHOLDER_KEY)) ||
-      (providerType === "gemini" &&
-        (!geminiKey || geminiKey === "your-gemini-api-key"))
-
-    if (isMockMode) {
-      const results = platforms.map((platform: string) => ({
-        platform,
-        content: generateMockContent(platform, content),
-      }))
-      return NextResponse.json({ results })
-    }
-
-    const provider = getAIProvider()
-
-    const results = await Promise.all(
-      platforms.map(async (platform: string) => {
-        const prompt = platformPrompts[platform]
-        if (!prompt) {
-          return { platform, content: null, error: `Unknown platform: ${platform}` }
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder()
+        const send = (data: unknown) => {
+          controller.enqueue(encoder.encode(JSON.stringify(data) + "\n"))
         }
-
-        const userMessage = (prompts && prompts[platform]) || prompt.user(content)
 
         try {
-          const result = await provider.generate({
-            system: prompt.system,
-            user: userMessage,
-          })
-          return { platform, content: result }
-        } catch (err) {
-          if (err instanceof AIError && err.code === "QUOTA_EXHAUSTED") {
-            return {
-              platform,
-              content: generateMockContent(platform, content),
-              error: "Quota exhausted, using fallback.",
-            }
-          }
-          return { platform, content: generateMockContent(platform, content) }
-        }
-      })
-    )
+          send({ type: "start", step: "analyzing" })
 
-    return NextResponse.json({ results })
+          for (const platform of platforms) {
+            send({ type: "start", platform })
+          }
+
+          await new Promise((r) => setTimeout(r, 100))
+
+          const promises = platforms.map(async (platform) => {
+            const result = await generateForPlatform(platform, content, prompts, mock)
+            send({ type: "result", platform: result.platform, content: result.content, error: result.error })
+            return result
+          })
+
+          await Promise.allSettled(promises)
+          send({ type: "complete" })
+        } catch (err) {
+          send({ type: "error", message: err instanceof Error ? err.message : "Generation failed" })
+        } finally {
+          controller.close()
+        }
+      },
+    })
+
+    return new NextResponse(stream, {
+      headers: {
+        "Content-Type": "text/plain",
+        "Cache-Control": "no-cache",
+      },
+    })
   } catch {
     return NextResponse.json(
       { error: "Failed to generate content" },
