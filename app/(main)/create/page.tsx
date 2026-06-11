@@ -20,17 +20,14 @@ const inputTabs = [
 type PlatformDef = {
   id: string
   label: string
-  icon: string
-  color: string
-  bgColor: string
 }
 
 const platforms: PlatformDef[] = [
-  { id: "linkedin", label: "LinkedIn", icon: "in", color: "text-[#0A66C2]", bgColor: "bg-[#0A66C2]/10" },
-  { id: "x", label: "X", icon: "X", color: "text-neutral-900", bgColor: "bg-neutral-900/10" },
-  { id: "facebook", label: "Facebook", icon: "f", color: "text-[#1877F2]", bgColor: "bg-[#1877F2]/10" },
-  { id: "instagram", label: "Instagram", icon: "ig", color: "text-[#E4405F]", bgColor: "bg-[#E4405F]/10" },
-  { id: "tiktok", label: "TikTok", icon: "tt", color: "text-neutral-900", bgColor: "bg-neutral-900/10" },
+  { id: "linkedin", label: "LinkedIn" },
+  { id: "x", label: "X" },
+  { id: "facebook", label: "Facebook" },
+  { id: "instagram", label: "Instagram" },
+  { id: "tiktok", label: "TikTok" },
 ]
 
 type PlatformStatus = "idle" | "generating" | "done" | "error"
@@ -374,9 +371,6 @@ export default function CreatePage() {
                       : "border-border bg-card hover:border-foreground/20 hover:shadow-sm"
                   } ${generating ? "opacity-50 cursor-not-allowed" : "cursor-pointer active:scale-[0.98]"}`}
                 >
-                  <div className={`flex items-center justify-center size-8 rounded-lg font-bold text-xs ${platform.bgColor} ${platform.color}`}>
-                    {platform.icon}
-                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{platform.label}</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
@@ -447,12 +441,7 @@ export default function CreatePage() {
             return (
               <Card key={platformId} size="sm" className="overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between py-3">
-                  <div className="flex items-center gap-2">
-                    <div className={`flex items-center justify-center size-6 rounded-md text-xs font-bold ${platform.bgColor} ${platform.color}`}>
-                      {platform.icon}
-                    </div>
-                    <CardTitle className="text-sm">{platform.label}</CardTitle>
-                  </div>
+                  <CardTitle className="text-sm">{platform.label}</CardTitle>
                   <div className="flex items-center gap-1">
                     {status === "generating" && (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
