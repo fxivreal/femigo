@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Sparkles, Repeat2, FileCheck, Globe, ChevronRight } from "lucide-react"
+import { Logo } from "@/components/logo"
 
 const features = [
   {
@@ -24,8 +25,7 @@ export default function LandingPage() {
     <div className="flex min-h-screen flex-col">
       <header className="flex items-center justify-between px-4 sm:px-8 h-14 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="flex items-center gap-2">
-          <Sparkles className="size-5 text-primary" />
-          <span className="font-semibold text-base text-heading">Femigo</span>
+          <Logo />
         </div>
         <div className="flex items-center gap-3">
           <Link
@@ -121,8 +121,7 @@ export default function LandingPage() {
       <footer className="border-t px-4 py-6">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-primary" />
-            <span className="text-sm font-medium text-heading">Femigo</span>
+            <Logo size={20} />
           </div>
           <p className="text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()} Femigo. All rights reserved.

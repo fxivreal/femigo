@@ -1,13 +1,12 @@
 import Link from "next/link"
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form"
-import { Sparkles } from "lucide-react"
+import { Logo } from "@/components/logo"
 
 export default function ForgotPasswordPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
-      <Link href="/" className="flex items-center gap-2 mb-8">
-        <Sparkles className="size-5 text-primary" />
-        <span className="font-semibold text-lg text-heading">Femigo</span>
+      <Link href="/" className="mb-8">
+        <Logo />
       </Link>
       <ForgotPasswordForm />
     </div>

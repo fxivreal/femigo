@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Home, Library, Sparkles, User, LogOut } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
+import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -28,9 +29,8 @@ export function DashboardNav() {
     <>
       {/* Desktop sidebar */}
       <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-60 md:border-r md:bg-background md:z-30">
-        <div className="flex items-center gap-2 px-6 h-14 border-b shrink-0">
-          <Sparkles className="size-5 text-primary" />
-          <span className="font-semibold text-base text-heading">Femigo</span>
+        <div className="px-6 h-14 border-b shrink-0 flex items-center">
+          <Logo />
         </div>
         <nav className="flex-1 flex flex-col p-3 gap-1">
           {navItems.map((item) => {
