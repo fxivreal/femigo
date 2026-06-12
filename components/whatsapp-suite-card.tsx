@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
-import { Copy, Download, Loader2, MessageCircle, Check } from "lucide-react"
+import { Copy, Download, Loader2, MessageCircle, Check, TrendingUp } from "lucide-react"
+import { WhatsAppViralityScore } from "@/components/whatsapp-virality-score"
 
 interface WhatsAppSuiteCardProps {
   typeId: string
@@ -113,6 +114,18 @@ export function WhatsAppSuiteCard({ typeId, label, icon, content, status, extra 
           />
         )}
         {extra}
+
+        {status === "done" && content && (
+          <details className="mt-2 group">
+            <summary className="flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-pointer hover:text-foreground py-1">
+              <TrendingUp className="size-2.5" />
+              Show virality score
+            </summary>
+            <div className="pt-2">
+              <WhatsAppViralityScore content={content} compact allowAI />
+            </div>
+          </details>
+        )}
       </CardContent>
     </Card>
   )

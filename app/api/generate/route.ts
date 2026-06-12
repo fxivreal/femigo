@@ -86,16 +86,51 @@ function generateMockContent(platform: string, content: string) {
   }
 }
 
-function generateMockWhatsAppContent(type: string, preview: string) {
+const statusTemplates = [
+  "This one thing changed everything.",
+  "Most people overlook it completely.",
+  "The secret nobody tells you.",
+  "Here's what actually works.",
+  "Pay attention. It matters.",
+  "Most people get this wrong.",
+  "The difference is in the details.",
+  "This is what success looks like.",
+  "Don't make this mistake.",
+  "Here's the truth.",
+  "Start paying attention to this.",
+  "It's simpler than you think.",
+  "This changes everything.",
+  "Most people don't know this.",
+  "Here's what I wish I knew earlier.",
+  "The one thing that matters most.",
+  "Stop what you're doing and read this.",
+  "This is the key insight.",
+  "You've been doing it wrong.",
+  "Here's the real deal.",
+  "This applies to you.",
+  "Don't overlook this.",
+  "The sooner you learn this, the better.",
+  "This is non-negotiable.",
+  "Here's what separates the best.",
+  "Most people ignore this.",
+  "This is where it starts.",
+  "The foundation of everything.",
+  "Here's your next step.",
+  "Remember this one thing.",
+]
+
+function generateMockWhatsAppContent(type: string, preview: string, statusCount?: number) {
   switch (type) {
     case "status":
-      return (
-        `Status 1: This one thing changed everything.\n\n` +
-        `Status 2: Most people overlook it completely.\n\n` +
-        `Status 3: ${preview.toLowerCase()}\n\n` +
-        `Status 4: The difference is in the details.\n\n` +
-        `Status 5: Pay attention. It matters.`
-      )
+      const count = statusCount || 5
+      const lines: string[] = []
+      for (let i = 0; i < count; i++) {
+        const text = i === 2
+          ? preview.toLowerCase()
+          : statusTemplates[i % statusTemplates.length]
+        lines.push(`Status ${i + 1}: ${text}`)
+      }
+      return lines.join("\n\n")
     case "promotional":
       return (
         `🔥 New arrival! ${preview}\n\n` +
@@ -111,13 +146,130 @@ function generateMockWhatsAppContent(type: string, preview: string) {
       )
     case "broadcast":
       return (
-        `Hey everyone 👋\n\n` +
-        `We just got new stock! ${preview}\n\n` +
-        `Swing by our store or DM to order. First 10 buyers get free delivery 🚚`
+        `#EDUCATIONAL\n` +
+        `Short: Did you know? ${preview}\n` +
+        `Medium: Here's something valuable: ${preview} Understanding this can save you money and stress.\n` +
+        `Long: We want to share something useful with you. ${preview} Most people don't know this, but once you do, it changes everything. Apply this today and see the difference. DM us if you have questions!\n\n` +
+        `#PROMOTION\n` +
+        `Short: New arrival! ${preview} — DM to order.\n` +
+        `Medium: We just got new stock! ${preview} Available now at great prices. First 10 buyers get free delivery 🚚 DM to order.\n` +
+        `Long: Exciting news! We've just restocked ${preview} and it's selling fast. Limited quantities available. Order now to avoid disappointment. Free delivery within Lagos for first 10 customers. DM to place your order!\n\n` +
+        `#ANNOUNCEMENT\n` +
+        `Short: Big news! ${preview} — details below 👇\n` +
+        `Medium: We're excited to announce: ${preview} This is something we've been working on and we can't wait to share it with you. Check it out!\n` +
+        `Long: We have an announcement to make! ${preview} This is a major step for us, and we wanted our community to hear it first. Stay tuned for more updates, and reach out if you have any questions. We're here for you!\n\n` +
+        `#UPDATE\n` +
+        `Short: Quick update: ${preview}\n` +
+        `Medium: Here's what's happening: ${preview} We're making improvements based on your feedback. Thank you for your support!\n` +
+        `Long: We want to keep you in the loop. ${preview} We've been working hard behind the scenes to bring you better service. Your feedback has been invaluable. If you have thoughts, we'd love to hear them. Reply to this message anytime!`
       )
     case "follow-up":
       return (
-        `Hi there! I hope you're enjoying your purchase. Just checking in — let me know if you have any questions. We're here to help!`
+        `#NEW_LEAD\n` +
+        `Friendly:\n` +
+        `Var 1: Hey! Thanks for reaching out. I'd love to help you get started. What questions do you have?\n` +
+        `Var 2: Hi there! Just checking in — is there anything I can help you with? No pressure at all.\n` +
+        `Var 3: Hey! I know you were looking into this. Happy to answer any questions whenever you're ready.\n\n` +
+        `Professional:\n` +
+        `Var 1: Thank you for your interest. I'd be happy to provide additional information if needed.\n` +
+        `Var 2: I wanted to follow up on your inquiry. Please let me know if you have any questions.\n` +
+        `Var 3: Following up on our conversation. I'm available to discuss further at your convenience.\n\n` +
+        `Sales-Oriented:\n` +
+        `Var 1: I noticed you were interested. This offer has been helping others — don't miss out. Reply to learn more.\n` +
+        `Var 2: Quick follow-up — we have limited availability right now. Let me know if you'd like to secure your spot.\n` +
+        `Var 3: You expressed interest and I wanted to make sure you didn't miss this. We're offering a special incentive this week.\n\n` +
+        `#QUOTE_FOLLOWUP\n` +
+        `Friendly:\n` +
+        `Var 1: Hey! Just checking in on the quote I sent. Happy to walk through anything or adjust if needed.\n` +
+        `Var 2: Hi! Was the quote clear enough? I can break it down or explore options with you.\n` +
+        `Var 3: Hope you're doing well! Any thoughts on the proposal? I'm here if you need tweaks.\n\n` +
+        `Professional:\n` +
+        `Var 1: I hope this message finds you well. I wanted to follow up regarding the proposal shared earlier.\n` +
+        `Var 2: Following up on the quote sent on your request. Please let me know if you require any clarification.\n` +
+        `Var 3: I trust you've had time to review the estimate. I remain available to discuss any aspect further.\n\n` +
+        `Sales-Oriented:\n` +
+        `Var 1: The quote I sent is valid for 3 more days. Lock in this rate before it expires.\n` +
+        `Var 2: I know you're considering options. Here's why our solution delivers the best value — let me show you.\n` +
+        `Var 3: We've had high demand and slots are filling. If you're ready to move forward, let's get started today.\n\n` +
+        `#ABANDONED_PURCHASE\n` +
+        `Friendly:\n` +
+        `Var 1: Hey! Noticed you were checking something out. Need help with anything? I'm here.\n` +
+        `Var 2: Hi! Just checking in — sometimes checkout can be tricky. Let me know if I can assist.\n` +
+        `Var 3: Hey! Want me to save that item for you? Happy to help you complete your order.\n\n` +
+        `Professional:\n` +
+        `Var 1: I noticed your order was not completed. Please let me know if you encountered any issues.\n` +
+        `Var 2: Your selected items are still available. I'm available to assist with the checkout process.\n` +
+        `Var 3: This is a courteous reminder that your cart is still active. We're here to help if needed.\n\n` +
+        `Sales-Oriented:\n` +
+        `Var 1: Your cart is about to expire. Complete your order now to avoid missing out on this deal.\n` +
+        `Var 2: We've reserved your items but they're in high demand. Checkout now to secure them.\n` +
+        `Var 3: Don't let this opportunity slip! Complete your purchase today and enjoy free delivery.\n\n` +
+        `#CUSTOMER_REENGAGEMENT\n` +
+        `Friendly:\n` +
+        `Var 1: Hey! It's been a while. We've added some exciting new things you might love. Come check us out!\n` +
+        `Var 2: Hi there! Was just thinking of you. We have some fresh updates and would love to have you back.\n` +
+        `Var 3: Long time no chat! Hope everything is great. We've missed you — here's something special.\n\n` +
+        `Professional:\n` +
+        `Var 1: I hope this message finds you well. We would value the opportunity to serve you again.\n` +
+        `Var 2: It has been some time since your last visit. We have made several improvements since then.\n` +
+        `Var 3: We appreciate your past patronage and would like to share what's new. Your satisfaction remains our priority.\n\n` +
+        `Sales-Oriented:\n` +
+        `Var 1: It's been a while! We're running a limited promotion for returning customers. Don't miss out.\n` +
+        `Var 2: You've been missed! Here's an exclusive re-engagement offer — only available to past customers.\n` +
+        `Var 3: We've improved our offering significantly since you last visited. See what's new and save on your return.\n\n` +
+        `#POST_PURCHASE\n` +
+        `Friendly:\n` +
+        `Var 1: Thanks for your order! We're so excited for you. Reach out if you need anything at all.\n` +
+        `Var 2: Hey! Just wanted to say thank you. Hope everything is perfect — we're here if you need support.\n` +
+        `Var 3: You're awesome! Thanks for choosing us. Let us know how it goes — we'd love to hear.\n\n` +
+        `Professional:\n` +
+        `Var 1: Thank you for your purchase. We are committed to ensuring your satisfaction with the product.\n` +
+        `Var 2: We appreciate your business. Our support team is available should you require any assistance.\n` +
+        `Var 3: Your order has been confirmed. We will keep you updated on delivery and are here for any queries.\n\n` +
+        `Sales-Oriented:\n` +
+        `Var 1: Thanks for your purchase! As a valued customer, you have early access to our upcoming launch.\n` +
+        `Var 2: Welcome to the family! Enjoy 10% off your next order — use code THANKYOU at checkout.\n` +
+        `Var 3: Great choice! Customers who bought this also love our premium bundle. Check it out!\n\n` +
+        `#TESTIMONIAL_REQUEST\n` +
+        `Friendly:\n` +
+        `Var 1: So glad you loved it! Would you mind sharing a quick review? Even one sentence helps us a ton.\n` +
+        `Var 2: Hey! We'd be so grateful if you could leave a short testimonial. Your feedback means the world.\n` +
+        `Var 3: Happy to hear you're enjoying it! Mind telling us what you think? Copy-paste friendly below.\n\n` +
+        `Professional:\n` +
+        `Var 1: We would greatly appreciate a brief testimonial based on your experience. Your feedback helps others.\n` +
+        `Var 2: If you are satisfied with your purchase, we kindly request a review. It takes less than a minute.\n` +
+        `Var 3: Your opinion matters to us. Please share your experience to help us serve you and others better.\n\n` +
+        `Sales-Oriented:\n` +
+        `Var 1: Loved our product? A quick testimonial helps others trust us — and helps you can refer friends for rewards!\n` +
+        `Var 2: Your success story could inspire others. Share a quick review and get featured on our page.\n` +
+        `Var 3: Help us grow! Leave a review and receive a discount on your next purchase as our thank you.\n`
+      )
+    case "sales-funnel":
+      return (
+        `#AWARENESS\n` +
+        `Soft: Have you ever noticed how much time you spend on tasks that could be automated?\n` +
+        `Balanced: Most small business owners waste 10+ hours a week on manual tasks. This adds up.\n` +
+        `Aggressive: Are you still doing everything yourself? Let's fix that.\n\n` +
+        `#INTEREST\n` +
+        `Soft: Imagine what you could do with 10 extra hours per week — more clients, more revenue, more rest.\n` +
+        `Balanced: Here's something interesting: businesses that automate save an average of 30% in operational costs.\n` +
+        `Aggressive: You're losing money every week you delay automation. Here's why.\n\n` +
+        `#TRUST\n` +
+        `Soft: We've helped over 200 businesses like yours simplify their operations. Here's what one of them said...\n` +
+        `Balanced: Since 2020, we've delivered measurable results for our clients — reduced overhead, increased output.\n` +
+        `Aggressive: Our track record speaks for itself. 95% of clients see improvement in the first month.\n\n` +
+        `#OFFER\n` +
+        `Soft: We'd love to help you set up a simple automation system. Plans start at ₦25,000/month.\n` +
+        `Balanced: Our starter package includes workflow setup, training, and support. ₦25,000/month — cancel anytime.\n` +
+        `Aggressive: Get started today for ₦25,000/month. Limited slots available — don't wait.\n\n` +
+        `#URGENCY\n` +
+        `Soft: We have just 3 openings this month at the starter rate. Next batch opens in 6 weeks.\n` +
+        `Balanced: Price increases to ₦35,000/month from next month. Lock in ₦25,000 if you sign up this week.\n` +
+        `Aggressive: 2 spots left at this price. Once they're gone, you'll pay 40% more. Act now.\n\n` +
+        `#FOLLOWUP\n` +
+        `Soft: No pressure at all! If you ever want to chat about automation, I'm here. Just reply anytime.\n` +
+        `Balanced: Still thinking about it? Happy to answer any questions. Here's a free resource to help you decide.\n` +
+        `Aggressive: I don't want you to miss out. Let me know if you have concerns — I'm here to help.`
       )
     default:
       return `Mock WhatsApp content for ${type}:\n\n${preview}`
@@ -229,7 +381,8 @@ async function generateForWhatsAppType(
   brandVoiceInstruction?: string,
   audience?: string,
   angle?: string,
-  quickReplyQuestion?: string
+  quickReplyQuestion?: string,
+  statusCount?: number
 ) {
   // Handle quick-reply live question separately
   if (type === "quick-reply" && quickReplyQuestion) {
@@ -267,12 +420,13 @@ async function generateForWhatsAppType(
   const systemPrompt = parts.join("\n\n")
 
   const angleInstruction = audience === "nigerian" ? "\n\n" + getAngleInstruction(angle || "") : ""
-  const userMessage = prompt.user(analysisContext) + angleInstruction
+  const countInstruction = type === "status" && statusCount ? `\n\nGenerate exactly ${statusCount} statuses.` : ""
+  const userMessage = prompt.user(analysisContext) + angleInstruction + countInstruction
 
   const preview = truncate(sourceContent, 120)
 
   if (mock) {
-    return { platform: `whatsapp_${type}`, content: generateMockWhatsAppContent(type, preview) }
+    return { platform: `whatsapp_${type}`, content: generateMockWhatsAppContent(type, preview, type === "status" ? statusCount : undefined) }
   }
 
   try {
@@ -308,9 +462,10 @@ export async function POST(request: Request) {
       whatsappSuite?: boolean
       types?: string[]
       quickReplyQuestion?: string
+      statusCount?: number
     } = await request.json()
 
-    let { mode, goal, brandVoice, analysis, clusterId, audience, angle, whatsappSuite, types, quickReplyQuestion } = body
+    let { mode, goal, brandVoice, analysis, clusterId, audience, angle, whatsappSuite, types, quickReplyQuestion, statusCount } = body
     let content: string | undefined = body.content
 
     const isWhatsappSuite = whatsappSuite === true
@@ -510,8 +665,8 @@ export async function POST(request: Request) {
                 brandVoiceInstruction,
                 audience,
                 angle,
-                // Only pass question for quick-reply type
-                (t === "quick-reply" && quickReplyQuestion) ? quickReplyQuestion : undefined
+                (t === "quick-reply" && quickReplyQuestion) ? quickReplyQuestion : undefined,
+                t === "status" ? statusCount : undefined
               )
 
               // Track insights used

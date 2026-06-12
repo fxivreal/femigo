@@ -12,14 +12,18 @@ import { toast } from "sonner"
 import { Sparkles, Target, Loader2, Check, MessageCircle } from "lucide-react"
 import { ContentInput } from "@/components/content-input"
 import { WhatsAppSuiteCard } from "@/components/whatsapp-suite-card"
+import { WhatsAppStatusViewer } from "@/components/whatsapp-status-viewer"
+import { WhatsAppBroadcastViewer } from "@/components/whatsapp-broadcast-viewer"
+import { WhatsAppFunnelViewer } from "@/components/whatsapp-funnel-viewer"
+import { WhatsAppFollowUpViewer } from "@/components/whatsapp-followup-viewer"
 import { QuickReplySection } from "@/components/quick-reply-section"
 
 type GenerationStatus = Record<string, "idle" | "generating" | "done" | "error">
 
-const totalItems = (selected: string[]) =>
+const totalItems = (selected: string[], statusCount: number) =>
   whatsappContentTypes
     .filter((t) => selected.includes(t.id))
-    .reduce((sum, t) => sum + t.count, 0)
+    .reduce((sum, t) => sum + (t.id === "status" ? statusCount : t.count), 0)
 
 export default function WhatsAppPage() {
   const { user } = useAuth()
@@ -40,6 +44,7 @@ export default function WhatsAppPage() {
   const [angle, setAngle] = useState<string>("educational")
   const [brandVoice, setBrandVoice] = useState<Record<string, string> | null>(null)
   const [analysis, setAnalysis] = useState<ContentAnalysis | null>(null)
+  const [statusCount, setStatusCount] = useState<number>(5)
 
   // Load brand voice
   useEffect(() => {
@@ -105,6 +110,7 @@ export default function WhatsAppPage() {
           brandVoice: brandVoice || undefined,
           audience: audience !== "default" ? audience : undefined,
           angle: audience === "nigerian" ? angle : undefined,
+          statusCount: selectedTypes.includes("status") ? statusCount : undefined,
         }),
       })
 
@@ -266,7 +272,7 @@ export default function WhatsAppPage() {
             Choose which WhatsApp content types to generate.
             {selectedTypes.length > 0 && (
               <span className="text-muted-foreground">
-                {" "}— {totalItems(selectedTypes)} items total
+                {" "}— {totalItems(selectedTypes, statusCount)} items total
               </span>
             )}
           </CardDescription>
@@ -312,6 +318,40 @@ export default function WhatsAppPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Status Count Selector (only when Status is selected) */}
+      {selectedTypes.includes("status") && (
+        <Card className="mb-6 border-green-200 bg-green-50/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Status Count</CardTitle>
+            <CardDescription>How many statuses should we generate?</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {[5, 10, 20, 30].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setStatusCount(n)}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
+                    statusCount === n
+                      ? "bg-green-600 text-white shadow-sm"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {n} statuses
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {statusCount === 5 && "Best for one key insight — tight, focused story."}
+              {statusCount === 10 && "Two insights — broader coverage with progression."}
+              {statusCount === 20 && "Multiple insights — detailed, multi-angle sequence."}
+              {statusCount === 30 && "Maximum depth — covers most insights from your content."}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Audience */}
       <Card className="mb-6">
@@ -431,7 +471,7 @@ export default function WhatsAppPage() {
           ) : (
             <Sparkles className="size-4 mr-2" />
           )}
-          {generating ? "Generating..." : `Generate WhatsApp Content (${totalItems(selectedTypes)} items)`}
+          {generating ? "Generating..." : `Generate WhatsApp Content (${totalItems(selectedTypes, statusCount)} items)`}
         </Button>
         {!generating && (
           <span className="text-xs text-muted-foreground">
@@ -483,6 +523,52 @@ export default function WhatsAppPage() {
               const content = results[ct.id] || ""
               const status = statuses[ct.id] || "idle"
               const isQuickReply = ct.id === "quick-reply"
+              const isStatus = ct.id === "status"
+              const isBroadcast = ct.id === "broadcast"
+              const isSalesFunnel = ct.id === "sales-funnel"
+              const isFollowUp = ct.id === "follow-up"
+
+              if (isStatus && status === "done" && content) {
+                return (
+                  <WhatsAppStatusViewer
+                    key={ct.id}
+                    content={content}
+                    statusCount={statusCount}
+                    onRegenerate={handleGenerate}
+                  />
+                )
+              }
+
+              if (isBroadcast && status === "done" && content) {
+                return (
+                  <WhatsAppBroadcastViewer
+                    key={ct.id}
+                    content={content}
+                    onRegenerate={handleGenerate}
+                  />
+                )
+              }
+
+              if (isSalesFunnel && status === "done" && content) {
+                return (
+                  <WhatsAppFunnelViewer
+                    key={ct.id}
+                    content={content}
+                    sourceContent={sourceContent}
+                    onRegenerate={handleGenerate}
+                  />
+                )
+              }
+
+              if (isFollowUp && status === "done" && content) {
+                return (
+                  <WhatsAppFollowUpViewer
+                    key={ct.id}
+                    content={content}
+                    onRegenerate={handleGenerate}
+                  />
+                )
+              }
 
               return (
                 <WhatsAppSuiteCard

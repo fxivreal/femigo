@@ -1,5 +1,6 @@
 export { whatsappContentTypes, whatsappPromptRegistry, type WhatsAppType, type WhatsAppContentType } from "./types"
 export { promotionalPrompt } from "./promotional"
 export { quickReplyPrompt, quickReplyLiveAnswerPrompt } from "./quick-reply"
-export { broadcastPrompt } from "./broadcast"
-export { followUpPrompt } from "./follow-up"
+export { broadcastV2Prompt } from "./broadcast-v2"
+export { followUpV2Prompt } from "./follow-up-v2"
+export { salesFunnelPrompt } from "./sales-funnel"

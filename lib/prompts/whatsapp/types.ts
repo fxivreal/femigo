@@ -2,10 +2,11 @@ import type { PlatformPrompt } from "../shared"
 import { whatsappStatusPrompt } from "../whatsapp-status"
 import { promotionalPrompt } from "./promotional"
 import { quickReplyPrompt } from "./quick-reply"
-import { broadcastPrompt } from "./broadcast"
-import { followUpPrompt } from "./follow-up"
+import { broadcastV2Prompt } from "./broadcast-v2"
+import { followUpV2Prompt } from "./follow-up-v2"
+import { salesFunnelPrompt } from "./sales-funnel"
 
-export type WhatsAppType = "status" | "promotional" | "quick-reply" | "broadcast" | "follow-up"
+export type WhatsAppType = "status" | "promotional" | "quick-reply" | "broadcast" | "follow-up" | "sales-funnel"
 
 export interface WhatsAppContentType {
   id: WhatsAppType
@@ -16,17 +17,19 @@ export interface WhatsAppContentType {
 }
 
 export const whatsappContentTypes: WhatsAppContentType[] = [
-  { id: "status", label: "Status", description: "5-frame story progression for ephemeral posts", icon: "📱", count: 5 },
+  { id: "status", label: "Status", description: "Story progression for ephemeral WhatsApp posts", icon: "📱", count: 5 },
   { id: "promotional", label: "Promotional", description: "Single product/offer announcement message", icon: "🏷️", count: 1 },
   { id: "quick-reply", label: "Quick Reply Templates", description: "3-5 Q&A pairs for common customer DMs", icon: "💬", count: 1 },
-  { id: "broadcast", label: "Broadcast", description: "Single warm broadcast message for groups", icon: "📢", count: 1 },
-  { id: "follow-up", label: "Follow-up", description: "Friendly customer check-in message", icon: "🤝", count: 1 },
+  { id: "broadcast", label: "Broadcast", description: "Warm broadcast with 4 types × 3 versions", icon: "📢", count: 1 },
+  { id: "follow-up", label: "Follow-up", description: "6 types × 3 tones × 3 variations each", icon: "🤝", count: 1 },
+  { id: "sales-funnel", label: "Sales Funnel", description: "6-stage funnel with 3 tone versions", icon: "🔄", count: 1 },
 ]
 
 export const whatsappPromptRegistry: Record<string, PlatformPrompt> = {
   status: whatsappStatusPrompt,
   promotional: promotionalPrompt,
   "quick-reply": quickReplyPrompt,
-  broadcast: broadcastPrompt,
-  "follow-up": followUpPrompt,
+  broadcast: broadcastV2Prompt,
+  "follow-up": followUpV2Prompt,
+  "sales-funnel": salesFunnelPrompt,
 }
