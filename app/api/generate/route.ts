@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
 import { platformPrompts, getGoalInstruction, formatBrandVoice, formatAnalysisContext } from "@/lib/prompts"
 import { getAIProvider, AIError } from "@/lib/ai"
-import { analyzeContent, generateMockAnalysis } from "@/lib/analyze"
+import { analyzeContent, generateMockAnalysis, clusterInsights, generateMockClusters, flattenInsightsForClustering } from "@/lib/analyze"
 import { calculateCoverage } from "@/lib/coverage"
 import { generationModes, expandMode } from "@/lib/generation-modes"
-import type { ContentAnalysis } from "@/lib/analysis-types"
+import type { ContentAnalysis, InsightCluster } from "@/lib/analysis-types"
 
 export const runtime = "nodejs"
 export const maxDuration = 120
@@ -172,9 +172,10 @@ export async function POST(request: Request) {
       goal?: string
       brandVoice?: Record<string, string>
       analysis?: ContentAnalysis
+      clusterId?: string
     } = await request.json()
 
-    let { mode, goal, brandVoice, analysis } = body
+    let { mode, goal, brandVoice, analysis, clusterId } = body
     let content: string | undefined = body.content
 
     if (!content || !mode || !generationModes[mode]) {
@@ -189,6 +190,7 @@ export async function POST(request: Request) {
     const mock = isMockMode()
     const goalInstruction = getGoalInstruction(goal)
     const brandVoiceInstruction = formatBrandVoice(brandVoice)
+    let clusters: InsightCluster[] = []
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -215,11 +217,35 @@ export async function POST(request: Request) {
             send({ type: "analysis_complete", analysis })
           }
 
+          // Clustering step
+          if (mock) {
+            clusters = generateMockClusters(analysis)
+          } else {
+            try {
+              const ai = getAIProvider()
+              clusters = await clusterInsights(ai, analysis)
+            } catch {
+              clusters = generateMockClusters(analysis)
+            }
+          }
+          send({ type: "clusters", clusters })
+
           // Replace raw content with structured analysis context
           rawContent = formatAnalysisContext(analysis)
 
-          // Expand mode into focused assets
-          const assets = expandMode(modeConfig, analysis)
+          // Filter insights by selected cluster
+          let allInsights = flattenInsightsForClustering(analysis)
+          if (clusterId) {
+            const cluster = clusters.find((c) => c.id === clusterId)
+            if (cluster) {
+              allInsights = cluster.insightIndices
+                .map((i) => allInsights[i])
+                .filter(Boolean)
+            }
+          }
+
+          // Expand mode into focused assets using filtered insights
+          const assets = expandMode(modeConfig, allInsights)
 
           // Send start events grouped by platform
           for (const platform of modeConfig.platforms) {

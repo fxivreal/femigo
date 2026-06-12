@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { getDbInstance } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
 import { goalInstructions, type ContentGoal } from "@/lib/prompts"
-import type { ContentAnalysis } from "@/lib/analysis-types"
+import type { ContentAnalysis, InsightCluster } from "@/lib/analysis-types"
 import type { CoverageResult } from "@/lib/coverage"
 import { generationModes } from "@/lib/generation-modes"
 import { Input } from "@/components/ui/input"
@@ -64,6 +64,8 @@ export default function CreatePage() {
 
   const [analysis, setAnalysis] = useState<ContentAnalysis | null>(null)
   const [coverage, setCoverage] = useState<CoverageResult | null>(null)
+  const [clusters, setClusters] = useState<InsightCluster[] | null>(null)
+  const [selectedCluster, setSelectedCluster] = useState<string | null>(null)
 
   const [selectedAssetTab, setSelectedAssetTab] = useState<Record<string, number>>({})
 
@@ -148,6 +150,8 @@ export default function CreatePage() {
     setGeneratedResults({})
     setAnalysis(null)
     setCoverage(null)
+    setClusters(null)
+    setSelectedCluster(null)
 
     const statuses: Record<string, PlatformStatus> = {}
     targets.forEach((p) => (statuses[p] = "generating"))
@@ -163,6 +167,7 @@ export default function CreatePage() {
           goal: goal || undefined,
           brandVoice: brandVoice || undefined,
           analysis: analysis || undefined,
+          clusterId: selectedCluster || undefined,
         }),
       })
 
@@ -246,6 +251,14 @@ export default function CreatePage() {
             case "analysis_complete":
               if (event.analysis) {
                 setAnalysis(event.analysis as ContentAnalysis)
+              }
+              break
+
+            case "clusters":
+              if (event.clusters) {
+                const cs = event.clusters as InsightCluster[]
+                setClusters(cs)
+                if (cs.length > 0) setSelectedCluster(cs[0].id)
               }
               break
 
@@ -558,6 +571,54 @@ export default function CreatePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Insight Clusters */}
+      {clusters && clusters.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Target className="size-4" />
+              Content Focus
+            </CardTitle>
+            <CardDescription>Pick a cluster to generate content from, or use all insights.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedCluster(null)}
+                className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
+                  !selectedCluster
+                    ? "bg-primary text-white shadow-sm"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                All Insights
+              </button>
+              {clusters.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setSelectedCluster(c.id)}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
+                    selectedCluster === c.id
+                      ? "bg-primary text-white shadow-sm"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                  title={c.description}
+                >
+                  {c.title}
+                </button>
+              ))}
+            </div>
+            {selectedCluster && (
+              <p className="text-xs text-muted-foreground mt-2 ml-0.5">
+                {clusters.find((c) => c.id === selectedCluster)?.description}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Generate Button */}
       <div className="flex items-center gap-3 mb-8">

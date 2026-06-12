@@ -12,3 +12,10 @@ export interface ContentAnalysis {
   contentHooks: string[]
   viralAngles: string[]
 }
+
+export interface InsightCluster {
+  id: string
+  title: string
+  description: string
+  insightIndices: number[]
+}

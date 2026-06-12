@@ -1,5 +1,3 @@
-import type { ContentAnalysis } from "./analysis-types"
-
 export interface ModeAsset {
   platform: string
   count: number
@@ -58,20 +56,6 @@ export const generationModes: Record<string, GenerationMode> = {
   },
 }
 
-function flattenAllInsights(analysis: ContentAnalysis): string[] {
-  const items: string[] = []
-  for (const t of analysis.keyTakeaways) items.push(t)
-  for (const a of analysis.actionableAdvice) items.push(a)
-  for (const s of analysis.statistics) items.push(`${s.value} — ${s.context}`)
-  for (const q of analysis.quotes) items.push(q.text)
-  for (const e of analysis.examples) items.push(e)
-  for (const m of analysis.commonMistakes) items.push(m)
-  for (const l of analysis.lessonsLearned) items.push(l)
-  for (const h of analysis.contentHooks) items.push(h)
-  for (const v of analysis.viralAngles) items.push(v)
-  return items
-}
-
 export interface FocusedAsset {
   platform: string
   assetIndex: number
@@ -79,10 +63,9 @@ export interface FocusedAsset {
 }
 
 export function distributeInsights(
-  analysis: ContentAnalysis,
+  insights: string[],
   totalAssets: number
 ): string[][] {
-  const insights = flattenAllInsights(analysis)
   if (insights.length === 0) {
     return Array.from({ length: totalAssets }, () => [])
   }
@@ -105,9 +88,9 @@ export function distributeInsights(
 
 export function expandMode(
   mode: GenerationMode,
-  analysis: ContentAnalysis
+  insights: string[]
 ): FocusedAsset[] {
-  const insightAssignments = distributeInsights(analysis, mode.totalAssets)
+  const insightAssignments = distributeInsights(insights, mode.totalAssets)
   const result: FocusedAsset[] = []
   let insightIdx = 0
 
