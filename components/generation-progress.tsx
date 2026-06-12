@@ -9,6 +9,7 @@ const platformLabels: Record<string, string> = {
   instagram: "Instagram",
   tiktok: "TikTok",
   youtube_shorts: "YouTube Shorts",
+  whatsapp_status: "Status",
 }
 
 type StepStatus = "pending" | "active" | "done" | "error"

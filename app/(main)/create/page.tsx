@@ -7,22 +7,15 @@ import { goalInstructions, audienceModes, angles, type ContentGoal } from "@/lib
 import type { ContentAnalysis, InsightCluster } from "@/lib/analysis-types"
 import type { CoverageResult } from "@/lib/coverage"
 import { generationModes } from "@/lib/generation-modes"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { Sparkles, FileText, Loader2, X, Link, Play, File as FileIcon, Check, Target, RefreshCw } from "lucide-react"
+import { Sparkles, Loader2, Target, MessageCircle, ArrowRight } from "lucide-react"
 import { GenerationProgress } from "@/components/generation-progress"
 import { ContentActions } from "@/components/content-actions"
 import { AnalysisDashboard } from "@/components/analysis-dashboard"
-
-const inputTabs = [
-  { id: "text", label: "Text", icon: FileText },
-  { id: "article", label: "Article URL", icon: Link },
-  { id: "youtube", label: "YouTube URL", icon: Play },
-  { id: "pdf", label: "PDF URL", icon: FileIcon },
-]
+import { ContentInput } from "@/components/content-input"
 
 const modeList = Object.values(generationModes)
 
@@ -33,18 +26,13 @@ const platformLabels: Record<string, string> = {
   instagram: "Instagram",
   tiktok: "TikTok",
   youtube_shorts: "YouTube Shorts",
-  whatsapp_status: "WhatsApp Status",
 }
 
 type PlatformStatus = "idle" | "generating" | "done" | "error"
 
 export default function CreatePage() {
   const { user } = useAuth()
-  const [inputTab, setInputTab] = useState<"text" | "article" | "youtube" | "pdf">("text")
   const [content, setContent] = useState("")
-  const [url, setUrl] = useState("")
-  const [extractedTitle, setExtractedTitle] = useState("")
-  const [extracting, setExtracting] = useState(false)
   const [selectedMode, setSelectedMode] = useState<string>("quick")
   const [generating, setGenerating] = useState(false)
   const [platformStatuses, setPlatformStatuses] = useState<Record<string, PlatformStatus>>({})
@@ -101,38 +89,8 @@ export default function CreatePage() {
     })
   }
 
-  const handleTabChange = (tab: "text" | "article" | "youtube" | "pdf") => {
-    setInputTab(tab)
-    setUrl("")
-    setExtractedTitle("")
-  }
-
-  const handleExtract = async () => {
-    if (!url.trim()) {
-      toast.error("Please enter a URL.")
-      return
-    }
-    setExtracting(true)
-    setExtractedTitle("")
-    try {
-      const res = await fetch("/api/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: inputTab, url: url.trim() }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error || "Failed to extract content.")
-        return
-      }
-      setExtractedTitle(data.title || "")
-      setContent(data.content || "")
-      toast.success("Content extracted successfully!")
-    } catch {
-      toast.error("Failed to extract content. Check the URL and try again.")
-    } finally {
-      setExtracting(false)
-    }
+  const handleContentReady = (c: string) => {
+    setContent(c)
   }
 
   const handleGenerate = async () => {
@@ -336,15 +294,9 @@ export default function CreatePage() {
         userId: user.uid,
         content: content.trim(),
         mode: selectedMode,
-        sourceType: inputTab,
         goal: goal || null,
         createdAt: serverTimestamp(),
       }
-        if (inputTab !== "text") {
-          sourceData.sourceUrl = url.trim()
-          if (extractedTitle) sourceData.sourceTitle = extractedTitle
-        }
-
         if (audience !== "default") {
           sourceData.audience = audience
           sourceData.angle = angle
@@ -390,104 +342,29 @@ export default function CreatePage() {
         Paste content then choose a generation mode to produce platform-specific posts.
       </p>
 
-      {/* Input Type Tabs */}
-      <div className="flex gap-1 rounded-xl bg-muted p-1 mb-6">
-        {inputTabs.map((tab) => {
-          const Icon = tab.icon
-          const active = inputTab === tab.id
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => handleTabChange(tab.id as "text" | "article" | "youtube" | "pdf")}
-              className={`flex items-center justify-center gap-1.5 flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                active
-                  ? "bg-primary/10 text-primary shadow-sm"
-                  : "bg-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-              }`}
-            >
-              <Icon className="size-4" />
-              <span className="hidden sm:inline">{tab.label}</span>
-            </button>
-          )
-        })}
+      {/* Content Input */}
+      <div className="mb-6">
+        <ContentInput onContentReady={(c) => handleContentReady(c)} />
       </div>
 
-      {/* Input Section */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>
-            {inputTab === "text" ? "Content Source" : inputTab === "article" ? "Article URL" : inputTab === "youtube" ? "YouTube URL" : "PDF URL"}
-          </CardTitle>
-          <CardDescription>
-            {inputTab === "text"
-              ? "Paste your blog post, article, newsletter, or transcript."
-              : inputTab === "article"
-              ? "Enter a blog or article URL to extract its content."
-              : inputTab === "youtube"
-              ? "Paste any YouTube video link to extract its transcript."
-              : "Enter a PDF URL to extract its text content."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {(inputTab === "article" || inputTab === "youtube" || inputTab === "pdf") && (
-            <>
-              <div className="flex gap-2">
-                <Input
-                  placeholder={
-                    inputTab === "article"
-                      ? "https://example.com/article"
-                      : inputTab === "youtube"
-                      ? "https://www.youtube.com/watch?v=..."
-                      : "https://example.com/document.pdf"
-                  }
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleExtract() }}
-                />
-                <Button
-                  onClick={handleExtract}
-                  disabled={extracting || !url.trim()}
-                  className="bg-primary hover:bg-primary/80 text-white shrink-0"
-                >
-                  {extracting ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    "Extract"
-                  )}
-                </Button>
-              </div>
-              {inputTab === "youtube" && (
-                <p className="text-xs text-muted-foreground">
-                  Works with youtube.com/watch?v=..., youtu.be/..., and other YouTube URL formats.
-                </p>
-              )}
-              {inputTab === "pdf" && (
-                <p className="text-xs text-muted-foreground">
-                  Direct PDF URLs only (ending in .pdf). Works best with text-based PDFs, not scanned documents.
-                </p>
-              )}
-              {extractedTitle && (
-                <div className="rounded-lg bg-muted/50 border px-3 py-2">
-                  <p className="text-xs text-muted-foreground">Extracted title</p>
-                  <p className="text-sm font-medium">{extractedTitle}</p>
-                </div>
-              )}
-            </>
-          )}
-          <Textarea
-            placeholder={
-              inputTab === "text"
-                ? "Paste your content here..."
-                : extracting
-                ? "Extracting content..."
-                : "Extracted content will appear here. You can edit it before generating."
-            }
-            disabled={extracting}
-            className="min-h-[250px] sm:min-h-[350px] resize-y focus-visible:ring-primary/20"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-          />
+      {/* WhatsApp Suite Banner */}
+      <Card className="mb-6 border-green-200 bg-green-50/50">
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="size-5 text-green-600 shrink-0" />
+              <p className="text-sm text-green-800">
+                <span className="font-semibold">Need WhatsApp content?</span> Try the new WhatsApp Suite for Status, Promotional, Broadcast, Follow-up, and Quick Reply messages.
+              </p>
+            </div>
+            <a
+              href="/whatsapp"
+              className="shrink-0 text-xs font-medium text-green-700 hover:text-green-800 flex items-center gap-1 hover:underline whitespace-nowrap"
+            >
+              Go to WhatsApp Suite
+              <ArrowRight className="size-3" />
+            </a>
+          </div>
         </CardContent>
       </Card>
 
@@ -745,16 +622,19 @@ export default function CreatePage() {
           {modeConfig.platforms.map((platformId) => {
             const results = generatedResults[platformId] || []
             const assets = results.filter((r) => r)
-            if (assets.length === 0) return null
+            const status = platformStatuses[platformId]
+            if (assets.length === 0 && status !== "generating" && status !== "done") return null
             const currentTab = selectedAssetTab[platformId] || 0
             const result = assets[currentTab] || ""
-            const status = platformStatuses[platformId]
+
 
             return (
               <Card key={platformId} size="sm" className="overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between py-3">
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-sm">{platformLabels[platformId] || platformId}</CardTitle>
+                    <CardTitle className="text-sm">
+                      {platformLabels[platformId] || platformId}
+                    </CardTitle>
                     {assets.length > 1 && (
                       <div className="flex gap-0.5 ml-1">
                         {assets.map((_, vi) => (

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { platformPrompts, getGoalInstruction, formatBrandVoice, formatAnalysisContext, nigerianStrategistPreamble, getAngleInstruction } from "@/lib/prompts"
+import { whatsappPromptRegistry, quickReplyLiveAnswerPrompt } from "@/lib/prompts/whatsapp"
 import { getAIProvider, AIError } from "@/lib/ai"
 import { analyzeContent, generateMockAnalysis, clusterInsights, generateMockClusters, flattenInsightsForClustering } from "@/lib/analyze"
 import { calculateCoverage } from "@/lib/coverage"
@@ -82,6 +83,44 @@ function generateMockContent(platform: string, content: string) {
       )
     default:
       return `Mock content for ${platform}:\n\n${preview}\n\n(Platform-specific generation not available in mock mode.)`
+  }
+}
+
+function generateMockWhatsAppContent(type: string, preview: string) {
+  switch (type) {
+    case "status":
+      return (
+        `Status 1: This one thing changed everything.\n\n` +
+        `Status 2: Most people overlook it completely.\n\n` +
+        `Status 3: ${preview.toLowerCase()}\n\n` +
+        `Status 4: The difference is in the details.\n\n` +
+        `Status 5: Pay attention. It matters.`
+      )
+    case "promotional":
+      return (
+        `🔥 New arrival! ${preview}\n\n` +
+        `\u20a63,500 only — limited stock.\n` +
+        `📍 Available at our store now.\n` +
+        `DM to order or ask questions.`
+      )
+    case "quick-reply":
+      return (
+        `Q: How much?\nA: \u20a63,500 for standard size. Delivery \u20a6500 within Lagos. Order before 4pm for next-day delivery.\n\n` +
+        `Q: Is it available?\nA: Yes, in stock. Come to our store or DM to place an order.\n\n` +
+        `Q: Do you deliver?\nA: Yes — Lagos: \u20a6500, outside Lagos: \u20a62,000. 2-3 business days.`
+      )
+    case "broadcast":
+      return (
+        `Hey everyone 👋\n\n` +
+        `We just got new stock! ${preview}\n\n` +
+        `Swing by our store or DM to order. First 10 buyers get free delivery 🚚`
+      )
+    case "follow-up":
+      return (
+        `Hi there! I hope you're enjoying your purchase. Just checking in — let me know if you have any questions. We're here to help!`
+      )
+    default:
+      return `Mock WhatsApp content for ${type}:\n\n${preview}`
   }
 }
 
@@ -181,6 +220,76 @@ async function generateForPlatform(
   }
 }
 
+async function generateForWhatsAppType(
+  type: string,
+  analysisContext: string,
+  sourceContent: string,
+  mock: boolean,
+  goalInstruction?: string,
+  brandVoiceInstruction?: string,
+  audience?: string,
+  angle?: string,
+  quickReplyQuestion?: string
+) {
+  // Handle quick-reply live question separately
+  if (type === "quick-reply" && quickReplyQuestion) {
+    if (mock) {
+      return { platform: "whatsapp_quick-reply", content: `Q: ${quickReplyQuestion}\nA: We have it available. Please DM us for more details or visit our store.` }
+    }
+    try {
+      const provider = getAIProvider()
+      const result = await provider.generate({
+        system: "You are a WhatsApp customer service assistant. Answer based ONLY on the provided source content.",
+        user: quickReplyLiveAnswerPrompt(sourceContent, analysisContext, quickReplyQuestion),
+      })
+      return { platform: "whatsapp_quick-reply", content: result }
+    } catch (err) {
+      if (err instanceof AIError && err.code === "QUOTA_EXHAUSTED") {
+        return { platform: "whatsapp_quick-reply", content: `Q: ${quickReplyQuestion}\nA: We have it available. Please DM us for more details.`, error: "Quota exhausted, using fallback." }
+      }
+      return { platform: "whatsapp_quick-reply", content: `Q: ${quickReplyQuestion}\nA: We have it available. Please DM us for more details.` }
+    }
+  }
+
+  // Batch generation for all WhatsApp types
+  const prompt = whatsappPromptRegistry[type]
+  if (!prompt) {
+    return { platform: `whatsapp_${type}`, content: null, error: `Unknown WhatsApp type: ${type}` }
+  }
+
+  const parts: string[] = []
+  if (audience === "nigerian") {
+    parts.push(nigerianStrategistPreamble)
+  }
+  parts.push(prompt.system)
+  if (goalInstruction) parts.push("\n" + goalInstruction)
+  if (brandVoiceInstruction) parts.push("\n" + brandVoiceInstruction)
+  const systemPrompt = parts.join("\n\n")
+
+  const angleInstruction = audience === "nigerian" ? "\n\n" + getAngleInstruction(angle || "") : ""
+  const userMessage = prompt.user(analysisContext) + angleInstruction
+
+  const preview = truncate(sourceContent, 120)
+
+  if (mock) {
+    return { platform: `whatsapp_${type}`, content: generateMockWhatsAppContent(type, preview) }
+  }
+
+  try {
+    const provider = getAIProvider()
+    const result = await provider.generate({
+      system: systemPrompt,
+      user: userMessage,
+    })
+    return { platform: `whatsapp_${type}`, content: result }
+  } catch (err) {
+    if (err instanceof AIError && err.code === "QUOTA_EXHAUSTED") {
+      return { platform: `whatsapp_${type}`, content: generateMockWhatsAppContent(type, preview), error: "Quota exhausted, using fallback." }
+    }
+    return { platform: `whatsapp_${type}`, content: generateMockWhatsAppContent(type, preview) }
+  }
+}
+
 export async function GET() {
   return NextResponse.json({ status: "ok", provider: process.env.AI_PROVIDER || "not-set" })
 }
@@ -196,12 +305,31 @@ export async function POST(request: Request) {
       clusterId?: string
       audience?: string
       angle?: string
+      whatsappSuite?: boolean
+      types?: string[]
+      quickReplyQuestion?: string
     } = await request.json()
 
-    let { mode, goal, brandVoice, analysis, clusterId, audience, angle } = body
+    let { mode, goal, brandVoice, analysis, clusterId, audience, angle, whatsappSuite, types, quickReplyQuestion } = body
     let content: string | undefined = body.content
 
-    if (!content || !mode || !generationModes[mode]) {
+    const isWhatsappSuite = whatsappSuite === true
+
+    if (!content) {
+      return NextResponse.json(
+        { error: "Content is required" },
+        { status: 400 }
+      )
+    }
+
+    if (isWhatsappSuite) {
+      if (!types || !Array.isArray(types) || types.length === 0) {
+        return NextResponse.json(
+          { error: "At least one WhatsApp content type is required" },
+          { status: 400 }
+        )
+      }
+    } else if (!mode || !generationModes[mode]) {
       return NextResponse.json(
         { error: "Content and a valid mode (quick, standard, comprehensive) are required" },
         { status: 400 }
@@ -209,7 +337,6 @@ export async function POST(request: Request) {
     }
 
     let rawContent: string = content
-    const modeConfig = generationModes[mode]
     const mock = isMockMode()
     const goalInstruction = getGoalInstruction(goal)
     const brandVoiceInstruction = formatBrandVoice(brandVoice)
@@ -223,7 +350,7 @@ export async function POST(request: Request) {
         }
 
         try {
-          // Analysis step
+          // Analysis step — shared between platforms and WhatsApp Suite
           send({ type: "start", step: "analyzing" })
 
           if (!analysis) {
@@ -240,117 +367,168 @@ export async function POST(request: Request) {
             send({ type: "analysis_complete", analysis })
           }
 
-          // Clustering step
-          if (mock) {
-            clusters = generateMockClusters(analysis)
-          } else {
-            try {
-              const ai = getAIProvider()
-              clusters = await clusterInsights(ai, analysis)
-            } catch {
+          if (!isWhatsappSuite) {
+            // Clustering step (only for platform generation — WhatsApp Suite uses analysis directly)
+            if (mock) {
               clusters = generateMockClusters(analysis)
+            } else {
+              try {
+                const ai = getAIProvider()
+                clusters = await clusterInsights(ai, analysis)
+              } catch {
+                clusters = generateMockClusters(analysis)
+              }
             }
-          }
-          send({ type: "clusters", clusters })
+            send({ type: "clusters", clusters })
 
-          // Replace raw content with structured analysis context
-          rawContent = formatAnalysisContext(analysis)
+            // Replace raw content with structured analysis context
+            rawContent = formatAnalysisContext(analysis)
 
-          // Filter insights by selected cluster
-          let allInsights = flattenInsightsForClustering(analysis)
-          if (clusterId) {
-            const cluster = clusters.find((c) => c.id === clusterId)
-            if (cluster) {
-              allInsights = cluster.insightIndices
-                .map((i) => allInsights[i])
-                .filter(Boolean)
-            }
-          }
-
-          // Expand mode into focused assets using filtered insights
-          const assets = expandMode(modeConfig, allInsights)
-
-          // Send start events grouped by platform
-          for (const platform of modeConfig.platforms) {
-            send({ type: "start", platform })
-          }
-
-          await new Promise((r) => setTimeout(r, 100))
-
-          // Track used insights across the batch to avoid reuse
-          const usedInsights = new Set<string>()
-          const usedHookTypes = new Set<string>()
-
-          // Generate each asset with different focus
-          const promises = assets.map(async (asset, idx) => {
-            const usedContextParts: string[] = []
-            if (usedInsights.size > 0) {
-              usedContextParts.push(
-                `ALREADY USED — These insights have already been covered by other assets in this batch. Do NOT reuse them:\n${Array.from(usedInsights).map((l) => `- ${l}`).join("\n")}`
-              )
-            }
-            if (usedHookTypes.size > 0) {
-              usedContextParts.push(
-                `HOOK VARIETY — These hook types have already been used. Use a DIFFERENT hook style:\n${Array.from(usedHookTypes).map((l) => `- ${l}`).join("\n")}`
-              )
-            }
-            const usedContext = usedContextParts.length > 0 ? usedContextParts.join("\n\n") : undefined
-
-            const result = await generateForPlatform(
-              asset.platform,
-              rawContent,
-              asset.focus,
-              mock,
-              goalInstruction,
-              brandVoiceInstruction,
-              usedContext,
-              audience,
-              angle
-            )
-
-            // Track what was used
-            if (result.content) {
-              asset.focus.forEach((f) => usedInsights.add(f))
-              const lower = result.content.toLowerCase()
-              if (lower.includes("?") && !lower.startsWith("did you know")) {
-                usedHookTypes.add("question-hook")
-              } else if (lower.startsWith("i") || lower.startsWith("my") || lower.startsWith("we")) {
-                usedHookTypes.add("personal-story-hook")
-              } else if (lower.startsWith("**") || lower.startsWith('"')) {
-                usedHookTypes.add("bold-statement-hook")
-              } else if (/\d/.test(lower.slice(0, 50))) {
-                usedHookTypes.add("statistic-hook")
-              } else {
-                usedHookTypes.add("declarative-hook")
+            // Filter insights by selected cluster
+            let allInsights = flattenInsightsForClustering(analysis)
+            if (clusterId) {
+              const cluster = clusters.find((c) => c.id === clusterId)
+              if (cluster) {
+                allInsights = cluster.insightIndices
+                  .map((i) => allInsights[i])
+                  .filter(Boolean)
               }
             }
 
-            send({
-              type: "result",
-              platform: result.platform,
-              content: result.content,
-              error: result.error,
-              assetIndex: asset.assetIndex,
-              focus: asset.focus,
-            })
-            return { ...result, assetIndex: asset.assetIndex, focus: asset.focus }
-          })
+            const modeConfig = generationModes[mode!]
 
-          const settled = await Promise.allSettled(promises)
+            // Expand mode into focused assets using filtered insights
+            const assets = expandMode(modeConfig, allInsights)
 
-          // Coverage calculation
-          if (analysis) {
-            const perPlatformContent: Record<string, string> = {}
-            for (const s of settled) {
-              if (s.status === "fulfilled") {
-                const r = s.value
-                if (r.content && !r.error) {
-                  perPlatformContent[r.platform] = (perPlatformContent[r.platform] || "") + "\n" + r.content
+            // Send start events grouped by platform
+            for (const platform of modeConfig.platforms) {
+              send({ type: "start", platform })
+            }
+
+            await new Promise((r) => setTimeout(r, 100))
+
+            // Track used insights across the batch to avoid reuse
+            const usedInsights = new Set<string>()
+            const usedHookTypes = new Set<string>()
+
+            // Generate each asset with different focus
+            const promises = assets.map(async (asset, idx) => {
+              const usedContextParts: string[] = []
+              if (usedInsights.size > 0) {
+                usedContextParts.push(
+                  `ALREADY USED — These insights have already been covered by other assets in this batch. Do NOT reuse them:\n${Array.from(usedInsights).map((l) => `- ${l}`).join("\n")}`
+                )
+              }
+              if (usedHookTypes.size > 0) {
+                usedContextParts.push(
+                  `HOOK VARIETY — These hook types have already been used. Use a DIFFERENT hook style:\n${Array.from(usedHookTypes).map((l) => `- ${l}`).join("\n")}`
+                )
+              }
+              const usedContext = usedContextParts.length > 0 ? usedContextParts.join("\n\n") : undefined
+
+              const result = await generateForPlatform(
+                asset.platform,
+                rawContent,
+                asset.focus,
+                mock,
+                goalInstruction,
+                brandVoiceInstruction,
+                usedContext,
+                audience,
+                angle
+              )
+
+              // Track what was used
+              if (result.content) {
+                asset.focus.forEach((f) => usedInsights.add(f))
+                const lower = result.content.toLowerCase()
+                if (lower.includes("?") && !lower.startsWith("did you know")) {
+                  usedHookTypes.add("question-hook")
+                } else if (lower.startsWith("i") || lower.startsWith("my") || lower.startsWith("we")) {
+                  usedHookTypes.add("personal-story-hook")
+                } else if (lower.startsWith("**") || lower.startsWith('"')) {
+                  usedHookTypes.add("bold-statement-hook")
+                } else if (/\d/.test(lower.slice(0, 50))) {
+                  usedHookTypes.add("statistic-hook")
+                } else {
+                  usedHookTypes.add("declarative-hook")
                 }
               }
+
+              send({
+                type: "result",
+                platform: result.platform,
+                content: result.content,
+                error: result.error,
+                assetIndex: asset.assetIndex,
+                focus: asset.focus,
+              })
+              return { ...result, assetIndex: asset.assetIndex, focus: asset.focus }
+            })
+
+            const settled = await Promise.allSettled(promises)
+
+            // Coverage calculation
+            if (analysis) {
+              const perPlatformContent: Record<string, string> = {}
+              for (const s of settled) {
+                if (s.status === "fulfilled") {
+                  const r = s.value
+                  if (r.content && !r.error) {
+                    perPlatformContent[r.platform] = (perPlatformContent[r.platform] || "") + "\n" + r.content
+                  }
+                }
+              }
+              const coverage = calculateCoverage(analysis, perPlatformContent)
+              send({ type: "coverage", ...coverage })
             }
-            const coverage = calculateCoverage(analysis, perPlatformContent)
-            send({ type: "coverage", ...coverage })
+          } else {
+            // WhatsApp Suite generation path
+            const analysisCtx = formatAnalysisContext(analysis)
+
+            // Send start for each type
+            for (const t of types!) {
+              send({ type: "start", platform: `whatsapp_${t}`, whatsappType: t })
+            }
+
+            await new Promise((r) => setTimeout(r, 100))
+
+            const usedInsights = new Set<string>()
+
+            // Generate each WhatsApp type sequentially (types matter for anti-repetition)
+            for (const t of types!) {
+              const totalInBatch = types!.length
+              const focusInstruction =
+                `\n\nFOCUS: This is type ${types!.indexOf(t) + 1} of ${totalInBatch} in a WhatsApp content batch. Cover insights NOT used by earlier types in this batch if possible.`
+
+              const result = await generateForWhatsAppType(
+                t,
+                analysisCtx,
+                rawContent,
+                mock,
+                goalInstruction,
+                brandVoiceInstruction,
+                audience,
+                angle,
+                // Only pass question for quick-reply type
+                (t === "quick-reply" && quickReplyQuestion) ? quickReplyQuestion : undefined
+              )
+
+              // Track insights used
+              if (result.content) {
+                usedInsights.add(`${t}: ${result.content.slice(0, 50)}`)
+              }
+
+              send({
+                type: "result",
+                platform: result.platform,
+                content: result.content,
+                error: result.error,
+                assetIndex: 0,
+                whatsappType: t,
+                focus: [],
+              })
+            }
           }
 
           send({ type: "complete" })

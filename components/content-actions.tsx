@@ -93,7 +93,7 @@ export function ContentActions({
         <span className="hidden sm:inline">Export</span>
       </Button>
 
-      {platform === "whatsapp_status" && (
+      {platform && platform.startsWith("whatsapp_") && (
         <Button
           size="sm"
           variant="ghost"

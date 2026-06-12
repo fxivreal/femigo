@@ -32,6 +32,11 @@ const platformColors: Record<string, { bg: string; text: string; label: string }
   instagram: { bg: "bg-[#E4405F]/10", text: "text-[#E4405F]", label: "Instagram" },
   tiktok: { bg: "bg-neutral-900/10", text: "text-neutral-900", label: "TikTok" },
   youtube_shorts: { bg: "bg-red-500/10", text: "text-red-600", label: "Shorts" },
+  whatsapp_status: { bg: "bg-green-500/10", text: "text-green-600", label: "WhatsApp Status" },
+  whatsapp_broadcast: { bg: "bg-green-500/10", text: "text-green-600", label: "WhatsApp Broadcast" },
+  whatsapp_promotional: { bg: "bg-emerald-500/10", text: "text-emerald-600", label: "WhatsApp Promo" },
+  "whatsapp_quick-reply": { bg: "bg-teal-500/10", text: "text-teal-600", label: "WhatsApp Quick Reply" },
+  whatsapp_followup: { bg: "bg-teal-500/10", text: "text-teal-600", label: "WhatsApp Follow-up" },
 }
 
 export default function LibraryPage() {
