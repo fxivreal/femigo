@@ -15,7 +15,7 @@ import { toast } from "sonner"
 import { Sparkles, FileText, Loader2, X, Link, Play, File as FileIcon, Check, Target, RefreshCw } from "lucide-react"
 import { GenerationProgress } from "@/components/generation-progress"
 import { ContentActions } from "@/components/content-actions"
-import { CoverageCard } from "@/components/coverage-card"
+import { AnalysisDashboard } from "@/components/analysis-dashboard"
 
 const inputTabs = [
   { id: "text", label: "Text", icon: FileText },
@@ -654,10 +654,15 @@ export default function CreatePage() {
         </div>
       )}
 
-      {/* Coverage Card */}
-      {showResults && coverage && (
-        <div className="mb-4">
-          <CoverageCard coverage={coverage} />
+      {/* Analysis Dashboard */}
+      {showResults && analysis && (
+        <div className="mb-6">
+          <AnalysisDashboard
+            analysis={analysis}
+            clusters={clusters}
+            coverage={coverage}
+            totalAssets={modeConfig.totalAssets}
+          />
         </div>
       )}
 
