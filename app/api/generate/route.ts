@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { platformPrompts, getGoalInstruction, formatBrandVoice, formatAnalysisContext } from "@/lib/prompts"
+import { platformPrompts, getGoalInstruction, formatBrandVoice, formatAnalysisContext, nigerianStrategistPreamble, getAngleInstruction } from "@/lib/prompts"
 import { getAIProvider, AIError } from "@/lib/ai"
 import { analyzeContent, generateMockAnalysis, clusterInsights, generateMockClusters, flattenInsightsForClustering } from "@/lib/analyze"
 import { calculateCoverage } from "@/lib/coverage"
@@ -72,6 +72,14 @@ function generateMockContent(platform: string, content: string) {
         `One thing changed everything. And it's not what you'd expect.\n\n` +
         `CTA: Subscribe for more — drop a comment and tell me if you agree.`
       )
+    case "whatsapp_status":
+      return (
+        `Status 1: This one thing changed everything.\n\n` +
+        `Status 2: Most people overlook it completely.\n\n` +
+        `Status 3: ${preview.toLowerCase()}\n\n` +
+        `Status 4: The difference is in the details.\n\n` +
+        `Status 5: Pay attention. It matters.`
+      )
     default:
       return `Mock content for ${platform}:\n\n${preview}\n\n(Platform-specific generation not available in mock mode.)`
   }
@@ -119,23 +127,36 @@ async function generateForPlatform(
   focus: string[],
   mock: boolean,
   goalInstruction?: string,
-  brandVoiceInstruction?: string
+  brandVoiceInstruction?: string,
+  usedContext?: string,
+  audience?: string,
+  angle?: string
 ) {
   const prompt = platformPrompts[platform]
   if (!prompt) {
     return { platform, content: null, error: `Unknown platform: ${platform}` }
   }
 
-  const parts = [prompt.system]
+  const parts: string[] = []
+  if (audience === "nigerian" && platform !== "whatsapp_status") {
+    parts.push(nigerianStrategistPreamble)
+  }
+  parts.push(prompt.system)
   if (goalInstruction) parts.push("\n" + goalInstruction)
   if (brandVoiceInstruction) parts.push("\n" + brandVoiceInstruction)
   const systemPrompt = parts.join("\n\n")
 
   const focusInstruction = focus.length > 0
-    ? `\n\nFOCUS AREAS — Prioritize these specific insights from the analysis:\n${focus.map((f) => `- ${f}`).join("\n")}\n\nEach asset must focus on DIFFERENT insights. Avoid repeating the same angle across assets.`
+    ? `\n\nFOCUS AREAS — These specific insights are assigned to this asset. They MUST be your primary source. Do NOT drift to other topics:\n${focus.map((f) => `- ${f}`).join("\n")}`
     : ""
 
-  const userMessage = prompt.user(analysisContext) + focusInstruction
+  const usedInstruction = usedContext
+    ? `\n\n${usedContext}`
+    : ""
+
+  const angleInstruction = audience === "nigerian" ? "\n\n" + getAngleInstruction(angle || "") : ""
+
+  const userMessage = prompt.user(analysisContext) + focusInstruction + angleInstruction + usedInstruction
 
   if (mock) {
     return { platform, content: generateMockContent(platform, analysisContext) }
@@ -173,9 +194,11 @@ export async function POST(request: Request) {
       brandVoice?: Record<string, string>
       analysis?: ContentAnalysis
       clusterId?: string
+      audience?: string
+      angle?: string
     } = await request.json()
 
-    let { mode, goal, brandVoice, analysis, clusterId } = body
+    let { mode, goal, brandVoice, analysis, clusterId, audience, angle } = body
     let content: string | undefined = body.content
 
     if (!content || !mode || !generationModes[mode]) {
@@ -254,16 +277,54 @@ export async function POST(request: Request) {
 
           await new Promise((r) => setTimeout(r, 100))
 
+          // Track used insights across the batch to avoid reuse
+          const usedInsights = new Set<string>()
+          const usedHookTypes = new Set<string>()
+
           // Generate each asset with different focus
           const promises = assets.map(async (asset, idx) => {
+            const usedContextParts: string[] = []
+            if (usedInsights.size > 0) {
+              usedContextParts.push(
+                `ALREADY USED — These insights have already been covered by other assets in this batch. Do NOT reuse them:\n${Array.from(usedInsights).map((l) => `- ${l}`).join("\n")}`
+              )
+            }
+            if (usedHookTypes.size > 0) {
+              usedContextParts.push(
+                `HOOK VARIETY — These hook types have already been used. Use a DIFFERENT hook style:\n${Array.from(usedHookTypes).map((l) => `- ${l}`).join("\n")}`
+              )
+            }
+            const usedContext = usedContextParts.length > 0 ? usedContextParts.join("\n\n") : undefined
+
             const result = await generateForPlatform(
               asset.platform,
               rawContent,
               asset.focus,
               mock,
               goalInstruction,
-              brandVoiceInstruction
+              brandVoiceInstruction,
+              usedContext,
+              audience,
+              angle
             )
+
+            // Track what was used
+            if (result.content) {
+              asset.focus.forEach((f) => usedInsights.add(f))
+              const lower = result.content.toLowerCase()
+              if (lower.includes("?") && !lower.startsWith("did you know")) {
+                usedHookTypes.add("question-hook")
+              } else if (lower.startsWith("i") || lower.startsWith("my") || lower.startsWith("we")) {
+                usedHookTypes.add("personal-story-hook")
+              } else if (lower.startsWith("**") || lower.startsWith('"')) {
+                usedHookTypes.add("bold-statement-hook")
+              } else if (/\d/.test(lower.slice(0, 50))) {
+                usedHookTypes.add("statistic-hook")
+              } else {
+                usedHookTypes.add("declarative-hook")
+              }
+            }
+
             send({
               type: "result",
               platform: result.platform,

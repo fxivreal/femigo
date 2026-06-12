@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { getDbInstance } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
-import { goalInstructions, type ContentGoal } from "@/lib/prompts"
+import { goalInstructions, audienceModes, angles, type ContentGoal } from "@/lib/prompts"
 import type { ContentAnalysis, InsightCluster } from "@/lib/analysis-types"
 import type { CoverageResult } from "@/lib/coverage"
 import { generationModes } from "@/lib/generation-modes"
@@ -33,6 +33,7 @@ const platformLabels: Record<string, string> = {
   instagram: "Instagram",
   tiktok: "TikTok",
   youtube_shorts: "YouTube Shorts",
+  whatsapp_status: "WhatsApp Status",
 }
 
 type PlatformStatus = "idle" | "generating" | "done" | "error"
@@ -68,6 +69,8 @@ export default function CreatePage() {
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null)
 
   const [selectedAssetTab, setSelectedAssetTab] = useState<Record<string, number>>({})
+  const [audience, setAudience] = useState<string>("default")
+  const [angle, setAngle] = useState<string>("educational")
 
   const modeConfig = generationModes[selectedMode]
 
@@ -161,14 +164,16 @@ export default function CreatePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: content.trim(),
-          mode: selectedMode,
-          goal: goal || undefined,
-          brandVoice: brandVoice || undefined,
-          analysis: analysis || undefined,
-          clusterId: selectedCluster || undefined,
-        }),
+          body: JSON.stringify({
+            content: content.trim(),
+            mode: selectedMode,
+            goal: goal || undefined,
+            brandVoice: brandVoice || undefined,
+            analysis: analysis || undefined,
+            clusterId: selectedCluster || undefined,
+            audience: audience !== "default" ? audience : undefined,
+            angle: audience === "nigerian" ? angle : undefined,
+          }),
       })
 
       if (!res.ok) {
@@ -335,10 +340,15 @@ export default function CreatePage() {
         goal: goal || null,
         createdAt: serverTimestamp(),
       }
-      if (inputTab !== "text") {
-        sourceData.sourceUrl = url.trim()
-        if (extractedTitle) sourceData.sourceTitle = extractedTitle
-      }
+        if (inputTab !== "text") {
+          sourceData.sourceUrl = url.trim()
+          if (extractedTitle) sourceData.sourceTitle = extractedTitle
+        }
+
+        if (audience !== "default") {
+          sourceData.audience = audience
+          sourceData.angle = angle
+        }
 
       if (analysis) {
         sourceData.analysis = analysis
@@ -523,6 +533,69 @@ export default function CreatePage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Audience Mode */}
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Audience</CardTitle>
+          <CardDescription>Choose who this content is for.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {audienceModes.map((m) => {
+              const active = audience === m.id
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    setAudience(m.id)
+                    if (m.id === "nigerian" && !angle) setAngle("educational")
+                  }}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
+                    active
+                      ? "bg-primary text-white shadow-sm"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {m.label}
+                </button>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Content Angle (only in Nigerian mode) */}
+      {audience === "nigerian" && (
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Content Angle</CardTitle>
+            <CardDescription>How should this content be framed?</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {angles.map((a) => {
+                const active = angle === a.id
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => setAngle(a.id)}
+                    className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
+                      active
+                        ? "bg-primary text-white shadow-sm"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
+                  >
+                    {a.label}
+                  </button>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Content Goal */}
       <Card className="mb-6">

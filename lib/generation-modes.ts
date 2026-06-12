@@ -28,23 +28,24 @@ export const generationModes: Record<string, GenerationMode> = {
   standard: {
     id: "standard",
     label: "Standard",
-    description: "Balanced coverage across key platforms — 10 assets",
-    totalAssets: 10,
-    platforms: ["linkedin", "facebook", "x", "instagram", "tiktok"],
+    description: "Balanced coverage across key platforms — 12 assets",
+    totalAssets: 12,
+    platforms: ["linkedin", "facebook", "x", "instagram", "tiktok", "whatsapp_status"],
     assets: [
       { platform: "linkedin", count: 3 },
       { platform: "facebook", count: 2 },
       { platform: "x", count: 2 },
       { platform: "instagram", count: 1 },
       { platform: "tiktok", count: 2 },
+      { platform: "whatsapp_status", count: 2 },
     ],
   },
   comprehensive: {
     id: "comprehensive",
     label: "Comprehensive",
-    description: "Maximum reach across all platforms — 35 assets",
-    totalAssets: 35,
-    platforms: ["linkedin", "facebook", "x", "instagram", "tiktok", "youtube_shorts"],
+    description: "Maximum reach across all platforms — 40 assets",
+    totalAssets: 40,
+    platforms: ["linkedin", "facebook", "x", "instagram", "tiktok", "youtube_shorts", "whatsapp_status"],
     assets: [
       { platform: "linkedin", count: 10 },
       { platform: "facebook", count: 5 },
@@ -52,6 +53,7 @@ export const generationModes: Record<string, GenerationMode> = {
       { platform: "instagram", count: 5 },
       { platform: "tiktok", count: 5 },
       { platform: "youtube_shorts", count: 5 },
+      { platform: "whatsapp_status", count: 5 },
     ],
   },
 }
