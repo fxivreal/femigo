@@ -1,3 +1,5 @@
+import type { ContentAnalysis } from "./analysis-types"
+
 export const platformStyles: Record<string, { id: string; label: string; instruction: string }[]> = {
   linkedin: [
     { id: "professional", label: "Professional", instruction: "Tone: polished, direct, insight-driven. Use data and real experience. Keep it professional but not stiff." },
@@ -79,6 +81,54 @@ export function formatBrandVoice(
     : ""
 }
 
+export function formatAnalysisContext(a: ContentAnalysis): string {
+  const lines: string[] = []
+
+  lines.push(`MAIN TOPIC: ${a.mainTopic}`)
+
+  if (a.subtopics.length) {
+    lines.push(`\nSUDTOPICS:\n- ${a.subtopics.join("\n- ")}`)
+  }
+
+  if (a.keyTakeaways.length) {
+    lines.push(`\nKEY TAKEAWAYS:\n- ${a.keyTakeaways.join("\n- ")}`)
+  }
+
+  if (a.actionableAdvice.length) {
+    lines.push(`\nACTIONABLE ADVICE:\n- ${a.actionableAdvice.join("\n- ")}`)
+  }
+
+  if (a.statistics.length) {
+    lines.push(`\nSTATISTICS:\n${a.statistics.map((s) => `- ${s.value} — ${s.context}`).join("\n")}`)
+  }
+
+  if (a.quotes.length) {
+    lines.push(`\nQUOTES:\n${a.quotes.map((q) => `- "${q.text}"${q.attribution ? ` — ${q.attribution}` : ""}`).join("\n")}`)
+  }
+
+  if (a.examples.length) {
+    lines.push(`\nEXAMPLES:\n- ${a.examples.join("\n- ")}`)
+  }
+
+  if (a.commonMistakes.length) {
+    lines.push(`\nCOMMON MISTAKES:\n- ${a.commonMistakes.join("\n- ")}`)
+  }
+
+  if (a.lessonsLearned.length) {
+    lines.push(`\nLESSONS LEARNED:\n- ${a.lessonsLearned.join("\n- ")}`)
+  }
+
+  if (a.contentHooks.length) {
+    lines.push(`\nCONTENT HOOKS:\n- ${a.contentHooks.join("\n- ")}`)
+  }
+
+  if (a.viralAngles.length) {
+    lines.push(`\nVIRAL ANGLES:\n- ${a.viralAngles.join("\n- ")}`)
+  }
+
+  return lines.join("\n")
+}
+
 export const platformPrompts: Record<string, PlatformPrompt> = {
   linkedin: {
     system: [
@@ -95,7 +145,7 @@ export const platformPrompts: Record<string, PlatformPrompt> = {
       "Use contractions. Vary sentence length. End with something worth remembering.",
     ].join("\n"),
     user: (content) =>
-      `Extract the key facts, benefits, and differentiators from this source. Then write a LinkedIn post that preserves those specifics. Professional tone, real insight, clear takeaway:\n\n${content}`,
+      `Based on the analysis below, write a LinkedIn post. Professional tone, real insight, clear takeaway:\n\n${content}`,
   },
 
   x: {
@@ -113,7 +163,7 @@ export const platformPrompts: Record<string, PlatformPrompt> = {
       "Avoid: long paragraphs, formal language, hedging (\"I think\", \"maybe\", \"sort of\").",
     ].join("\n"),
     user: (content) =>
-      `Extract the key facts and surprising angles from this source. Then turn it into an X thread. Hook hard, stay punchy, end with a question:\n\n${content}`,
+      `Based on the analysis below, write an X thread. Hook hard, stay punchy, end with a question:\n\n${content}`,
   },
 
   facebook: {
@@ -129,7 +179,7 @@ export const platformPrompts: Record<string, PlatformPrompt> = {
       "Avoid: 'have you ever wondered', 'in today's world', 'drop a comment below'.",
     ].join("\n"),
     user: (content) =>
-      `Extract the relatable angle and key details from this source. Then rewrite as a Facebook post — like you're telling a friend about it:\n\n${content}`,
+      `Based on the analysis below, write a Facebook post — like you're telling a friend about it:\n\n${content}`,
   },
 
   instagram: {
@@ -146,7 +196,7 @@ export const platformPrompts: Record<string, PlatformPrompt> = {
       "Avoid: 'elevate your', 'maximize your potential', 'seamlessly', hashtag spam.",
     ].join("\n"),
     user: (content) =>
-      `Extract the most interesting facts, benefits, and hooks from this source. Then write an Instagram caption that hooks in the first line, preserves those specifics, and feels personal:\n\n${content}`,
+      `Based on the analysis below, write an Instagram caption. Hook in the first line, keep it specific and personal:\n\n${content}`,
   },
 
   tiktok: {
@@ -164,7 +214,7 @@ export const platformPrompts: Record<string, PlatformPrompt> = {
       "Avoid: complete paragraphs, written-language grammar, corporate tone.",
     ].join("\n"),
     user: (content) =>
-      `Extract the most surprising or useful facts from this source. Then turn it into a TikTok script. Hook fast, keep it short, write for the ear:\n\n${content}`,
+      `Based on the analysis below, write a TikTok script. Hook fast, keep it short, write for the ear:\n\n${content}`,
   },
 
   youtube_shorts: {
@@ -182,6 +232,6 @@ export const platformPrompts: Record<string, PlatformPrompt> = {
       "Sound like a creator who respects the viewer's time.",
     ].join("\n"),
     user: (content) =>
-      `Extract the most compelling facts and insights from this source. Then write a YouTube Shorts script from it. Hook in the first sentence, fast pacing, 30–60 seconds:\n\n${content}`,
+      `Based on the analysis below, write a YouTube Shorts script. Hook in the first sentence, fast pacing, 30–60 seconds:\n\n${content}`,
   },
 }

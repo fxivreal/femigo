@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
-import { platformPrompts, platformStyles, getGoalInstruction, formatBrandVoice } from "@/lib/prompts"
+import { platformPrompts, platformStyles, getGoalInstruction, formatBrandVoice, formatAnalysisContext } from "@/lib/prompts"
 import { getAIProvider, AIError } from "@/lib/ai"
+import { analyzeContent, generateMockAnalysis } from "@/lib/analyze"
+import type { ContentAnalysis } from "@/lib/analysis-types"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -169,7 +171,19 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { content, platforms, prompts, styles, goal, brandVoice, variations } = await request.json()
+    const body: {
+      content?: string
+      platforms?: string[]
+      prompts?: Record<string, string>
+      styles?: Record<string, string>
+      goal?: string
+      brandVoice?: Record<string, string>
+      variations?: number
+      analysis?: ContentAnalysis
+    } = await request.json()
+
+    let { platforms, prompts, styles, goal, brandVoice, variations, analysis } = body
+    let content: string | undefined = body.content
 
     if (!content || !platforms || !Array.isArray(platforms) || platforms.length === 0) {
       return NextResponse.json(
@@ -177,6 +191,9 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
+
+    // Guaranteed string after validation above; reassignable for analysis context swap
+    let rawContent: string = content
 
     const mock = isMockMode()
     const goalInstruction = getGoalInstruction(goal)
@@ -191,7 +208,25 @@ export async function POST(request: Request) {
         }
 
         try {
+          // Analysis step
           send({ type: "start", step: "analyzing" })
+
+          if (!analysis) {
+            if (mock) {
+              analysis = generateMockAnalysis(rawContent)
+            } else {
+              try {
+                const ai = getAIProvider()
+                analysis = await analyzeContent(ai, rawContent)
+              } catch {
+                analysis = generateMockAnalysis(rawContent)
+              }
+            }
+            send({ type: "analysis_complete", analysis })
+          }
+
+          // Replace raw content with structured analysis for platform generation
+          rawContent = formatAnalysisContext(analysis)
 
           if (variationCount > 1) {
             for (const platform of platforms) {
@@ -212,7 +247,7 @@ export async function POST(request: Request) {
             return runs.map(async (variation) => {
               const result = await generateForPlatform(
                 platform,
-                content,
+                rawContent,
                 prompts,
                 mock,
                 styles,

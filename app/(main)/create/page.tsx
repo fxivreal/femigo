@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { getDbInstance } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
 import { platformPrompts, platformStyles, goalInstructions, type ContentGoal } from "@/lib/prompts"
+import type { ContentAnalysis } from "@/lib/analysis-types"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -66,6 +67,8 @@ export default function CreatePage() {
     keywords?: string
     avoidKeywords?: string
   } | null>(null)
+
+  const [analysis, setAnalysis] = useState<ContentAnalysis | null>(null)
 
   // Load brand voice from Firestore on mount
   useEffect(() => {
@@ -182,6 +185,7 @@ export default function CreatePage() {
 
     if (!promptOverrides) {
       setGeneratedResults({})
+      setAnalysis(null)
     }
 
     const statuses: Record<string, PlatformStatus> = {}
@@ -200,6 +204,7 @@ export default function CreatePage() {
           goal: goal || undefined,
           brandVoice: brandVoice || undefined,
           variations: variations > 1 ? variations : undefined,
+          analysis: analysis || undefined,
         }),
       })
 
@@ -281,6 +286,12 @@ export default function CreatePage() {
               }
               break
 
+            case "analysis_complete":
+              if (event.analysis) {
+                setAnalysis(event.analysis as ContentAnalysis)
+              }
+              break
+
             case "result":
               if (event.error) {
                 setErrorPlatforms((prev) => new Set([...prev, event.platform as string]))
@@ -354,6 +365,10 @@ export default function CreatePage() {
       if (inputTab !== "text") {
         sourceData.sourceUrl = url.trim()
         if (extractedTitle) sourceData.sourceTitle = extractedTitle
+      }
+
+      if (analysis) {
+        sourceData.analysis = analysis
       }
 
       const sourceRef = await addDoc(collection(db, "contentSources"), sourceData)
