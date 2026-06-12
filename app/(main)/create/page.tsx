@@ -788,6 +788,7 @@ export default function CreatePage() {
                   {status === "done" && (
                     <ContentActions
                       content={result}
+                      platform={platformId}
                       platformLabel={platformLabels[platformId] || platformId}
                     />
                   )}

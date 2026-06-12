@@ -10,11 +10,13 @@ import {
   RotateCcw,
   StarOff,
   Loader2,
+  MessageCircle,
 } from "lucide-react"
 
 interface ContentActionsProps {
   content: string
   platformLabel: string
+  platform?: string
   contentId?: string
   isFavorited?: boolean
   onRegenerate?: () => void
@@ -25,6 +27,7 @@ interface ContentActionsProps {
 export function ContentActions({
   content,
   platformLabel,
+  platform,
   contentId,
   isFavorited,
   onRegenerate,
@@ -89,6 +92,23 @@ export function ContentActions({
         <Download className="size-3" />
         <span className="hidden sm:inline">Export</span>
       </Button>
+
+      {platform === "whatsapp_status" && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 text-xs gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
+          onClick={async () => {
+            await navigator.clipboard.writeText(content)
+            const encoded = encodeURIComponent(content.slice(0, 1500))
+            window.open(`https://wa.me/?text=${encoded}`, "_blank")
+            toast.success("Copied & WhatsApp opened!")
+          }}
+        >
+          <MessageCircle className="size-3" />
+          <span className="hidden sm:inline">Send to WhatsApp</span>
+        </Button>
+      )}
 
       {contentId && onFavoriteToggle && (
         <Button

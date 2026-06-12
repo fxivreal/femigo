@@ -293,6 +293,7 @@ export default function LibraryPage() {
                                 {item && (
                                   <ContentActions
                                     content={item.content}
+                                    platform={platform}
                                     platformLabel={pc?.label || platform}
                                     contentId={item.id}
                                     isFavorited={item.favorited}
