@@ -5,6 +5,7 @@ import { getDbInstance } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
 import { platformPrompts, platformStyles, goalInstructions, type ContentGoal } from "@/lib/prompts"
 import type { ContentAnalysis } from "@/lib/analysis-types"
+import type { CoverageResult } from "@/lib/coverage"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,7 @@ import { toast } from "sonner"
 import { Sparkles, FileText, Loader2, X, Link, Play, File as FileIcon, Check, ChevronRight, Target, RefreshCw } from "lucide-react"
 import { GenerationProgress } from "@/components/generation-progress"
 import { ContentActions } from "@/components/content-actions"
+import { CoverageCard } from "@/components/coverage-card"
 
 const inputTabs = [
   { id: "text", label: "Text", icon: FileText },
@@ -69,6 +71,7 @@ export default function CreatePage() {
   } | null>(null)
 
   const [analysis, setAnalysis] = useState<ContentAnalysis | null>(null)
+  const [coverage, setCoverage] = useState<CoverageResult | null>(null)
 
   // Load brand voice from Firestore on mount
   useEffect(() => {
@@ -186,6 +189,7 @@ export default function CreatePage() {
     if (!promptOverrides) {
       setGeneratedResults({})
       setAnalysis(null)
+      setCoverage(null)
     }
 
     const statuses: Record<string, PlatformStatus> = {}
@@ -290,6 +294,15 @@ export default function CreatePage() {
               if (event.analysis) {
                 setAnalysis(event.analysis as ContentAnalysis)
               }
+              break
+
+            case "coverage":
+              setCoverage({
+                totalInsights: event.totalInsights as number,
+                usedInsights: event.usedInsights as number,
+                coverageScore: event.coverageScore as number,
+                perPlatform: event.perPlatform as Record<string, { used: number; score: number }>,
+              })
               break
 
             case "result":
@@ -721,6 +734,13 @@ export default function CreatePage() {
             completedPlatforms={completedPlatforms}
             errors={errorPlatforms}
           />
+        </div>
+      )}
+
+      {/* Coverage Card */}
+      {showResults && coverage && (
+        <div className="mb-4">
+          <CoverageCard coverage={coverage} />
         </div>
       )}
 

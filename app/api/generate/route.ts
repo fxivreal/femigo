@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { platformPrompts, platformStyles, getGoalInstruction, formatBrandVoice, formatAnalysisContext } from "@/lib/prompts"
 import { getAIProvider, AIError } from "@/lib/ai"
 import { analyzeContent, generateMockAnalysis } from "@/lib/analyze"
+import { calculateCoverage } from "@/lib/coverage"
 import type { ContentAnalysis } from "@/lib/analysis-types"
 
 export const runtime = "nodejs"
@@ -265,7 +266,23 @@ export async function POST(request: Request) {
             })
           })
 
-          await Promise.allSettled(promises)
+          const settled = await Promise.allSettled(promises)
+
+          // Coverage calculation
+          if (analysis) {
+            const perPlatformContent: Record<string, string> = {}
+            for (const s of settled) {
+              if (s.status === "fulfilled") {
+                const r = s.value
+                if (r.content && !r.error) {
+                  perPlatformContent[r.platform] = (perPlatformContent[r.platform] || "") + "\n" + r.content
+                }
+              }
+            }
+            const coverage = calculateCoverage(analysis, perPlatformContent)
+            send({ type: "coverage", ...coverage })
+          }
+
           send({ type: "complete" })
         } catch (err) {
           send({ type: "error", message: err instanceof Error ? err.message : "Generation failed" })
