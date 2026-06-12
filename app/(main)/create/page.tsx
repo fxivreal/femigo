@@ -3,15 +3,16 @@
 import { useState, useEffect } from "react"
 import { getDbInstance } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
-import { platformPrompts, platformStyles, goalInstructions, type ContentGoal } from "@/lib/prompts"
+import { goalInstructions, type ContentGoal } from "@/lib/prompts"
 import type { ContentAnalysis } from "@/lib/analysis-types"
 import type { CoverageResult } from "@/lib/coverage"
+import { generationModes } from "@/lib/generation-modes"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
-import { Sparkles, FileText, Loader2, X, Link, Play, File as FileIcon, Check, ChevronRight, Target, RefreshCw } from "lucide-react"
+import { Sparkles, FileText, Loader2, X, Link, Play, File as FileIcon, Check, Target, RefreshCw } from "lucide-react"
 import { GenerationProgress } from "@/components/generation-progress"
 import { ContentActions } from "@/components/content-actions"
 import { CoverageCard } from "@/components/coverage-card"
@@ -23,19 +24,16 @@ const inputTabs = [
   { id: "pdf", label: "PDF URL", icon: FileIcon },
 ]
 
-type PlatformDef = {
-  id: string
-  label: string
-}
+const modeList = Object.values(generationModes)
 
-const platforms: PlatformDef[] = [
-  { id: "linkedin", label: "LinkedIn" },
-  { id: "x", label: "X (Twitter)" },
-  { id: "facebook", label: "Facebook" },
-  { id: "instagram", label: "Instagram" },
-  { id: "tiktok", label: "TikTok" },
-  { id: "youtube_shorts", label: "YouTube Shorts" },
-]
+const platformLabels: Record<string, string> = {
+  linkedin: "LinkedIn",
+  x: "X (Twitter)",
+  facebook: "Facebook",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  youtube_shorts: "YouTube Shorts",
+}
 
 type PlatformStatus = "idle" | "generating" | "done" | "error"
 
@@ -46,7 +44,7 @@ export default function CreatePage() {
   const [url, setUrl] = useState("")
   const [extractedTitle, setExtractedTitle] = useState("")
   const [extracting, setExtracting] = useState(false)
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([])
+  const [selectedMode, setSelectedMode] = useState<string>("quick")
   const [generating, setGenerating] = useState(false)
   const [platformStatuses, setPlatformStatuses] = useState<Record<string, PlatformStatus>>({})
   const [generatedResults, setGeneratedResults] = useState<Record<string, string[]>>({})
@@ -56,13 +54,7 @@ export default function CreatePage() {
   const [completedPlatforms, setCompletedPlatforms] = useState<Set<string>>(new Set())
   const [errorPlatforms, setErrorPlatforms] = useState<Set<string>>(new Set())
 
-  const [editingPlatform, setEditingPlatform] = useState<string | null>(null)
-  const [editPromptText, setEditPromptText] = useState("")
-  const [platformStylesState, setPlatformStylesState] = useState<Record<string, string>>({})
-  const [regenerating, setRegenerating] = useState(false)
-
   const [goal, setGoal] = useState<string>("")
-  const [variations, setVariations] = useState(1)
   const [brandVoice, setBrandVoice] = useState<{
     tone?: string
     audience?: string
@@ -72,6 +64,10 @@ export default function CreatePage() {
 
   const [analysis, setAnalysis] = useState<ContentAnalysis | null>(null)
   const [coverage, setCoverage] = useState<CoverageResult | null>(null)
+
+  const [selectedAssetTab, setSelectedAssetTab] = useState<Record<string, number>>({})
+
+  const modeConfig = generationModes[selectedMode]
 
   // Load brand voice from Firestore on mount
   useEffect(() => {
@@ -91,45 +87,13 @@ export default function CreatePage() {
     })()
   }, [user])
 
-  // Store results as array per platform (supports variations)
-  const setPlatformResult = (platform: string, content: string, variation?: number) => {
+  const setPlatformResult = (platform: string, content: string, assetIndex: number) => {
     setGeneratedResults((prev) => {
       const existing = prev[platform] || []
-      const idx = variation ? variation - 1 : 0
       const next = [...existing]
-      next[idx] = content
+      next[assetIndex] = content
       return { ...prev, [platform]: next }
     })
-  }
-
-  const [selectedVariation, setSelectedVariation] = useState<Record<string, number>>({})
-
-  const getDefaultStyle = (platform: string): string => {
-    const styles = platformStyles[platform]
-    return styles?.[0]?.id || ""
-  }
-
-  const togglePlatform = (id: string) => {
-    setSelectedPlatforms((prev) => {
-      if (prev.includes(id)) {
-        const next = prev.filter((p) => p !== id)
-        return next
-      }
-      setPlatformStylesState((s) => ({ ...s, [id]: getDefaultStyle(id) }))
-      return [...prev, id]
-    })
-  }
-
-  const setStyle = (platform: string, style: string) => {
-    setPlatformStylesState((prev) => ({ ...prev, [platform]: style }))
-  }
-
-  const selectAllPlatforms = () => {
-    if (selectedPlatforms.length === platforms.length) {
-      setSelectedPlatforms([])
-    } else {
-      setSelectedPlatforms(platforms.map((p) => p.id))
-    }
   }
 
   const handleTabChange = (tab: "text" | "article" | "youtube" | "pdf") => {
@@ -166,18 +130,14 @@ export default function CreatePage() {
     }
   }
 
-  const handleGenerate = async (promptOverrides?: Record<string, string>) => {
+  const handleGenerate = async () => {
     if (!content.trim()) {
       toast.error("Please enter or extract some content first.")
       return
     }
-    if (selectedPlatforms.length === 0) {
-      toast.error("Please select at least one platform.")
-      return
-    }
     if (!user) return
 
-    const targets = promptOverrides ? Object.keys(promptOverrides) : selectedPlatforms
+    const targets = modeConfig.platforms
 
     setGenerating(true)
     setShowResults(false)
@@ -185,16 +145,13 @@ export default function CreatePage() {
     setStartedPlatforms(new Set())
     setCompletedPlatforms(new Set())
     setErrorPlatforms(new Set())
-
-    if (!promptOverrides) {
-      setGeneratedResults({})
-      setAnalysis(null)
-      setCoverage(null)
-    }
+    setGeneratedResults({})
+    setAnalysis(null)
+    setCoverage(null)
 
     const statuses: Record<string, PlatformStatus> = {}
     targets.forEach((p) => (statuses[p] = "generating"))
-    setPlatformStatuses((prev) => ({ ...prev, ...statuses }))
+    setPlatformStatuses(statuses)
 
     try {
       const res = await fetch("/api/generate", {
@@ -202,12 +159,9 @@ export default function CreatePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: content.trim(),
-          platforms: promptOverrides ? Object.keys(promptOverrides) : selectedPlatforms,
-          styles: promptOverrides ? undefined : platformStylesState,
-          prompts: promptOverrides,
+          mode: selectedMode,
           goal: goal || undefined,
           brandVoice: brandVoice || undefined,
-          variations: variations > 1 ? variations : undefined,
           analysis: analysis || undefined,
         }),
       })
@@ -234,7 +188,8 @@ export default function CreatePage() {
             updatedStatuses[result.platform] = "idle"
             continue
           }
-          resultsMap[result.platform] = [result.content]
+          if (!resultsMap[result.platform]) resultsMap[result.platform] = []
+          resultsMap[result.platform].push(result.content)
           updatedStatuses[result.platform] = "done"
           hasContent = true
         }
@@ -250,9 +205,7 @@ export default function CreatePage() {
           toast.error("Generation failed. Check your API key and billing.")
         }
 
-        if (!promptOverrides) {
-          saveToFirestore(data.results)
-        }
+        saveToFirestore(resultsMap)
         return
       }
 
@@ -311,10 +264,10 @@ export default function CreatePage() {
                 toast.error(`Failed to generate ${event.platform} content.`)
               } else if (event.content) {
                 const p = event.platform as string
-                const v = (event.variation as number) || 1
+                const ai = event.assetIndex as number
                 if (!resultsMap[p]) resultsMap[p] = []
-                resultsMap[p][v - 1] = event.content as string
-                setPlatformResult(p, event.content as string, v)
+                resultsMap[p][ai] = event.content as string
+                setPlatformResult(p, event.content as string, ai)
                 setCompletedPlatforms((prev) => new Set([...prev, p]))
                 hasContent = true
               }
@@ -334,7 +287,7 @@ export default function CreatePage() {
       for (const p of targets) {
         if (errorPlatforms.has(p)) {
           updatedStatuses[p] = "error"
-        } else if (resultsMap[p]) {
+        } else if (resultsMap[p] && resultsMap[p].some((c) => c)) {
           updatedStatuses[p] = "done"
         }
       }
@@ -346,18 +299,13 @@ export default function CreatePage() {
         toast.error("Generation failed. Check your API key and billing.")
       }
 
-      if (!promptOverrides) {
-        saveToFirestore(resultsMap)
-      }
+      saveToFirestore(resultsMap)
     } catch {
       toast.error("Failed to generate content. Please try again.")
-      if (!promptOverrides) {
-        setPlatformStatuses({})
-        setShowProgress(false)
-      }
+      setPlatformStatuses({})
+      setShowProgress(false)
     } finally {
       setGenerating(false)
-      setRegenerating(false)
     }
   }
 
@@ -369,8 +317,7 @@ export default function CreatePage() {
       const sourceData: Record<string, unknown> = {
         userId: user.uid,
         content: content.trim(),
-        platforms: selectedPlatforms,
-        styles: platformStylesState,
+        mode: selectedMode,
         sourceType: inputTab,
         goal: goal || null,
         createdAt: serverTimestamp(),
@@ -388,7 +335,9 @@ export default function CreatePage() {
 
       const items = Array.isArray(results)
         ? results.filter((r) => r.content && !r.error)
-        : Object.entries(results).map(([platform, contents]) => ({ platform, content: contents[0] || "" })).filter((r) => r.content)
+        : Object.entries(results).flatMap(([platform, contents]) =>
+            contents.filter((c) => c).map((content) => ({ platform, content }))
+          )
 
       const genResults = await Promise.allSettled(
         items.map((r) =>
@@ -396,7 +345,6 @@ export default function CreatePage() {
             userId: user.uid,
             sourceId: sourceRef.id,
             platform: r.platform,
-            style: platformStylesState[r.platform] || "",
             content: r.content,
             createdAt: serverTimestamp(),
           })
@@ -405,32 +353,18 @@ export default function CreatePage() {
 
       if (genResults.some((r) => r.status === "fulfilled")) {
         const { updateUserMetrics } = await import("@/lib/metrics")
-        await updateUserMetrics(user.uid, selectedPlatforms)
+        await updateUserMetrics(user.uid, modeConfig.platforms)
       }
     } catch {
       // Silent
     }
   }
 
-  const handleEditPrompt = (platform: string) => {
-    const prompt = platformPrompts[platform]
-    setEditPromptText(prompt?.user(content.trim()) || content.trim())
-    setEditingPlatform(platform)
-  }
-
-  const handleRegenerate = async () => {
-    if (!editingPlatform) return
-    setRegenerating(true)
-    await handleGenerate({ [editingPlatform]: editPromptText })
-    setEditingPlatform(null)
-    setEditPromptText("")
-  }
-
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-3xl mx-auto animate-fade-in">
       <h1 className="text-2xl sm:text-3xl font-bold text-heading mb-1">Create</h1>
       <p className="text-sm text-muted-foreground mb-6">
-        Paste content or a URL to generate platform-specific posts.
+        Paste content then choose a generation mode to produce platform-specific posts.
       </p>
 
       {/* Input Type Tabs */}
@@ -442,7 +376,7 @@ export default function CreatePage() {
             <button
               key={tab.id}
               type="button"
-              onClick={() => handleTabChange(tab.id as "text" | "article" | "youtube")}
+              onClick={() => handleTabChange(tab.id as "text" | "article" | "youtube" | "pdf")}
               className={`flex items-center justify-center gap-1.5 flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
                 active
                   ? "bg-primary/10 text-primary shadow-sm"
@@ -534,99 +468,43 @@ export default function CreatePage() {
         </CardContent>
       </Card>
 
-      {/* Platform Selector */}
+      {/* Generation Mode Selector */}
       <Card className="mb-6">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Target Platforms</CardTitle>
-              <CardDescription>Select where you want to publish.</CardDescription>
-            </div>
-            <button
-              type="button"
-              onClick={selectAllPlatforms}
-              className="text-xs font-medium text-primary hover:underline"
-            >
-              {selectedPlatforms.length === platforms.length ? "Deselect all" : "Select all"}
-            </button>
-          </div>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Generation Mode</CardTitle>
+          <CardDescription>Choose how many assets to generate.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {platforms.map((platform) => {
-              const checked = selectedPlatforms.includes(platform.id)
-              const status = platformStatuses[platform.id]
-              const result = generatedResults[platform.id]
-              const styles = platformStyles[platform.id]
-              const activeStyle = platformStylesState[platform.id]
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {modeList.map((mode) => {
+              const active = selectedMode === mode.id
               return (
-                <div
-                  key={platform.id}
-                  className={`rounded-xl border transition-all ${
-                    checked
-                      ? "border-primary/30 bg-primary/5 shadow-sm"
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => setSelectedMode(mode.id)}
+                  disabled={generating}
+                  className={`rounded-xl border p-4 text-left transition-all ${
+                    active
+                      ? "border-primary/30 bg-primary/5 shadow-sm ring-1 ring-primary/20"
                       : "border-border bg-card hover:border-foreground/20 hover:shadow-sm"
-                  } ${generating ? "opacity-50" : ""}`}
+                  } ${generating ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => !generating && togglePlatform(platform.id)}
-                    disabled={generating}
-                    className="w-full flex items-center gap-3 p-3.5 text-left cursor-pointer active:scale-[0.98] disabled:cursor-not-allowed"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{platform.label}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {status === "generating" && (
-                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                            <Loader2 className="size-2.5 animate-spin" />
-                            Generating...
-                          </span>
-                        )}
-                        {status === "done" && (
-                          <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium">
-                            <Check className="size-2.5" />
-                            Done
-                          </span>
-                        )}
-                        {status === "error" && (
-                          <span className="text-[10px] text-destructive font-medium">Failed</span>
-                        )}
-                        {(!status || status === "idle") && checked && (
-                          <span className="text-[10px] text-muted-foreground">Selected</span>
-                        )}
-                      </div>
-                    </div>
-                    {checked && (
-                      <div className="flex items-center justify-center size-5 rounded-full bg-primary text-white shrink-0">
-                        <Check className="size-3" />
-                      </div>
-                    )}
-                  </button>
-
-                  {/* Style pills — shown when platform is selected */}
-                  {checked && styles && !generating && (
-                    <div className="px-3.5 pb-3.5 pt-0 flex flex-wrap gap-1.5 border-t border-primary/10 mt-0">
-                      {styles.map((s) => {
-                        const isActive = activeStyle === s.id
-                        return (
-                          <button
-                            key={s.id}
-                            type="button"
-                            onClick={() => setStyle(platform.id, s.id)}
-                            className={`text-[10px] font-medium px-2 py-1 rounded-full transition-all ${
-                              isActive
-                                ? "bg-primary text-white shadow-sm"
-                                : "bg-primary/5 text-primary hover:bg-primary/10"
-                            }`}
-                          >
-                            {s.label}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
+                  <p className={`text-sm font-semibold ${active ? "text-primary" : "text-foreground"}`}>
+                    {mode.label}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{mode.description}</p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {mode.assets.map((a) => (
+                      <span
+                        key={a.platform}
+                        className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded"
+                      >
+                        {platformLabels[a.platform] || a.platform} ×{a.count}
+                      </span>
+                    ))}
+                  </div>
+                </button>
               )
             })}
           </div>
@@ -684,8 +562,8 @@ export default function CreatePage() {
       {/* Generate Button */}
       <div className="flex items-center gap-3 mb-8">
         <Button
-          onClick={() => handleGenerate()}
-          disabled={generating || !content.trim() || selectedPlatforms.length === 0}
+          onClick={handleGenerate}
+          disabled={generating || !content.trim()}
           size="lg"
           className="bg-primary hover:bg-primary/80 text-white"
         >
@@ -694,34 +572,12 @@ export default function CreatePage() {
           ) : (
             <Sparkles className="size-4 mr-2" />
           )}
-          {generating ? "Generating..." : `Generate (${selectedPlatforms.length})`}
+          {generating ? "Generating..." : `${modeConfig.label} (${modeConfig.totalAssets} assets)`}
         </Button>
-        {selectedPlatforms.length > 0 && !generating && (
-          <div className="flex items-center gap-3">
-            {/* Variations selector */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">Variations:</span>
-              <div className="flex gap-0.5">
-                {[1, 2, 3].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setVariations(n)}
-                    className={`text-xs font-medium px-2 py-1 rounded transition-colors ${
-                      variations === n
-                        ? "bg-primary/10 text-primary"
-                        : "bg-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <span className="text-xs text-muted-foreground">
-              {selectedPlatforms.length} platform{selectedPlatforms.length > 1 ? "s" : ""} selected
-            </span>
-          </div>
+        {!generating && (
+          <span className="text-xs text-muted-foreground">
+            {modeConfig.totalAssets} {modeConfig.platforms.length} platforms
+          </span>
         )}
       </div>
 
@@ -729,7 +585,7 @@ export default function CreatePage() {
       {showProgress && (
         <div className="mb-6">
           <GenerationProgress
-            platforms={selectedPlatforms}
+            platforms={modeConfig.platforms}
             startedPlatforms={startedPlatforms}
             completedPlatforms={completedPlatforms}
             errors={errorPlatforms}
@@ -747,45 +603,38 @@ export default function CreatePage() {
       {/* Results */}
       {showResults && (
         <div className="space-y-4 animate-slide-up">
-          {selectedPlatforms.map((platformId) => {
-            const platform = platforms.find((p) => p.id === platformId)
-            if (!platform) return null
+          {modeConfig.platforms.map((platformId) => {
             const results = generatedResults[platformId] || []
-            const currentVar = selectedVariation[platformId] || 0
-            const result = results[currentVar] || ""
+            const assets = results.filter((r) => r)
+            if (assets.length === 0) return null
+            const currentTab = selectedAssetTab[platformId] || 0
+            const result = assets[currentTab] || ""
             const status = platformStatuses[platformId]
-            if (status === "idle" || !status) return null
 
             return (
               <Card key={platformId} size="sm" className="overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between py-3">
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-sm">{platform.label}</CardTitle>
-                    {platformStylesState[platformId] && (
-                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-                        {platformStyles[platformId]?.find((s) => s.id === platformStylesState[platformId])?.label}
-                      </span>
-                    )}
-                    {/* Variation tabs */}
-                    {results.length > 1 && (
+                    <CardTitle className="text-sm">{platformLabels[platformId] || platformId}</CardTitle>
+                    {assets.length > 1 && (
                       <div className="flex gap-0.5 ml-1">
-                        {results.map((_, vi) => (
+                        {assets.map((_, vi) => (
                           <button
                             key={vi}
                             type="button"
                             onClick={() =>
-                              setSelectedVariation((prev) => ({
+                              setSelectedAssetTab((prev) => ({
                                 ...prev,
                                 [platformId]: vi,
                               }))
                             }
                             className={`text-[10px] font-medium px-1.5 py-0.5 rounded transition-colors ${
-                              currentVar === vi
+                              currentTab === vi
                                 ? "bg-primary text-white"
                                 : "bg-muted text-muted-foreground hover:bg-muted/80"
                             }`}
                           >
-                            V{vi + 1}
+                            Run {vi + 1}
                           </button>
                         ))}
                       </div>
@@ -800,9 +649,7 @@ export default function CreatePage() {
                   {status === "done" && (
                     <ContentActions
                       content={result}
-                      platformLabel={platform.label}
-                      showRegenerate
-                      onRegenerate={() => handleEditPrompt(platformId)}
+                      platformLabel={platformLabels[platformId] || platformId}
                     />
                   )}
                   {status === "error" && (
@@ -818,7 +665,7 @@ export default function CreatePage() {
                     />
                   </CardContent>
                 )}
-                {status === "generating" && (
+                {status === "generating" && !result && (
                   <CardContent className="pb-3">
                     <div className="rounded-lg border bg-muted/30 p-4">
                       <div className="space-y-2">
@@ -832,58 +679,6 @@ export default function CreatePage() {
               </Card>
             )
           })}
-        </div>
-      )}
-
-      {/* Edit Prompt Modal */}
-      {editingPlatform && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in">
-          <div className="bg-background rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col animate-scale-in">
-            <div className="flex items-center justify-between px-5 pt-5 pb-2">
-              <h2 className="text-base font-semibold capitalize">Edit prompt — {editingPlatform}</h2>
-              <button
-                type="button"
-                onClick={() => { setEditingPlatform(null); setEditPromptText("") }}
-                className="size-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-            <div className="px-5 pb-2">
-              <p className="text-xs text-muted-foreground">
-                Edit the instruction for generating content on this platform.
-              </p>
-            </div>
-            <div className="flex-1 overflow-auto px-5 py-3">
-              <Textarea
-                value={editPromptText}
-                onChange={(e) => setEditPromptText(e.target.value)}
-                className="min-h-[200px] resize-none text-sm focus-visible:ring-primary/20"
-              />
-            </div>
-            <div className="flex items-center justify-end gap-2 px-5 pb-5 pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => { setEditingPlatform(null); setEditPromptText("") }}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleRegenerate}
-                disabled={regenerating || !editPromptText.trim()}
-                className="bg-primary hover:bg-primary/80 text-white"
-              >
-                {regenerating ? (
-                  <Loader2 className="size-3 mr-1 animate-spin" />
-                ) : (
-                  <Sparkles className="size-3 mr-1" />
-                )}
-                Regenerate
-              </Button>
-            </div>
-          </div>
         </div>
       )}
     </div>

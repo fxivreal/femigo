@@ -1,25 +1,18 @@
 import { NextResponse } from "next/server"
-import { platformPrompts, platformStyles, getGoalInstruction, formatBrandVoice, formatAnalysisContext } from "@/lib/prompts"
+import { platformPrompts, getGoalInstruction, formatBrandVoice, formatAnalysisContext } from "@/lib/prompts"
 import { getAIProvider, AIError } from "@/lib/ai"
 import { analyzeContent, generateMockAnalysis } from "@/lib/analyze"
 import { calculateCoverage } from "@/lib/coverage"
+import { generationModes, expandMode } from "@/lib/generation-modes"
 import type { ContentAnalysis } from "@/lib/analysis-types"
 
 export const runtime = "nodejs"
-export const maxDuration = 60
+export const maxDuration = 120
 
 const PLACEHOLDER_KEY = "sk-your-key-here"
 
 function truncate(content: string, max: number) {
   return content.length > max ? content.slice(0, max).trimEnd() + "..." : content
-}
-
-function getStyleInstruction(platform: string, style?: string): string {
-  if (!style) return ""
-  const options = platformStyles[platform]
-  if (!options) return ""
-  const match = options.find((s) => s.id === style)
-  return match ? match.instruction : ""
 }
 
 function generateMockContent(platform: string, content: string) {
@@ -122,10 +115,9 @@ function isMockMode() {
 
 async function generateForPlatform(
   platform: string,
-  content: string,
-  prompts: Record<string, string> | undefined,
+  analysisContext: string,
+  focus: string[],
   mock: boolean,
-  styles?: Record<string, string>,
   goalInstruction?: string,
   brandVoiceInstruction?: string
 ) {
@@ -134,17 +126,19 @@ async function generateForPlatform(
     return { platform, content: null, error: `Unknown platform: ${platform}` }
   }
 
-  const styleInstruction = getStyleInstruction(platform, styles?.[platform])
   const parts = [prompt.system]
   if (goalInstruction) parts.push("\n" + goalInstruction)
   if (brandVoiceInstruction) parts.push("\n" + brandVoiceInstruction)
-  if (styleInstruction) parts.push("\nStyle: " + styleInstruction)
   const systemPrompt = parts.join("\n\n")
 
-  const userMessage = (prompts && prompts[platform]) || prompt.user(content)
+  const focusInstruction = focus.length > 0
+    ? `\n\nFOCUS AREAS — Prioritize these specific insights from the analysis:\n${focus.map((f) => `- ${f}`).join("\n")}\n\nEach asset must focus on DIFFERENT insights. Avoid repeating the same angle across assets.`
+    : ""
+
+  const userMessage = prompt.user(analysisContext) + focusInstruction
 
   if (mock) {
-    return { platform, content: generateMockContent(platform, content) }
+    return { platform, content: generateMockContent(platform, analysisContext) }
   }
 
   try {
@@ -158,11 +152,11 @@ async function generateForPlatform(
     if (err instanceof AIError && err.code === "QUOTA_EXHAUSTED") {
       return {
         platform,
-        content: generateMockContent(platform, content),
+        content: generateMockContent(platform, analysisContext),
         error: "Quota exhausted, using fallback.",
       }
     }
-    return { platform, content: generateMockContent(platform, content) }
+    return { platform, content: generateMockContent(platform, analysisContext) }
   }
 }
 
@@ -174,32 +168,27 @@ export async function POST(request: Request) {
   try {
     const body: {
       content?: string
-      platforms?: string[]
-      prompts?: Record<string, string>
-      styles?: Record<string, string>
+      mode?: string
       goal?: string
       brandVoice?: Record<string, string>
-      variations?: number
       analysis?: ContentAnalysis
     } = await request.json()
 
-    let { platforms, prompts, styles, goal, brandVoice, variations, analysis } = body
+    let { mode, goal, brandVoice, analysis } = body
     let content: string | undefined = body.content
 
-    if (!content || !platforms || !Array.isArray(platforms) || platforms.length === 0) {
+    if (!content || !mode || !generationModes[mode]) {
       return NextResponse.json(
-        { error: "Content and platforms are required" },
+        { error: "Content and a valid mode (quick, standard, comprehensive) are required" },
         { status: 400 }
       )
     }
 
-    // Guaranteed string after validation above; reassignable for analysis context swap
     let rawContent: string = content
-
+    const modeConfig = generationModes[mode]
     const mock = isMockMode()
     const goalInstruction = getGoalInstruction(goal)
     const brandVoiceInstruction = formatBrandVoice(brandVoice)
-    const variationCount = Math.min(Math.max(variations || 1, 1), 3)
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -226,44 +215,38 @@ export async function POST(request: Request) {
             send({ type: "analysis_complete", analysis })
           }
 
-          // Replace raw content with structured analysis for platform generation
+          // Replace raw content with structured analysis context
           rawContent = formatAnalysisContext(analysis)
 
-          if (variationCount > 1) {
-            for (const platform of platforms) {
-              for (let v = 1; v <= variationCount; v++) {
-                send({ type: "start", platform, variation: v })
-              }
-            }
-          } else {
-            for (const platform of platforms) {
-              send({ type: "start", platform })
-            }
+          // Expand mode into focused assets
+          const assets = expandMode(modeConfig, analysis)
+
+          // Send start events grouped by platform
+          for (const platform of modeConfig.platforms) {
+            send({ type: "start", platform })
           }
 
           await new Promise((r) => setTimeout(r, 100))
 
-          const promises = platforms.flatMap((platform) => {
-            const runs = Array.from({ length: variationCount }, (_, i) => i + 1)
-            return runs.map(async (variation) => {
-              const result = await generateForPlatform(
-                platform,
-                rawContent,
-                prompts,
-                mock,
-                styles,
-                goalInstruction,
-                brandVoiceInstruction
-              )
-              send({
-                type: "result",
-                platform: result.platform,
-                content: result.content,
-                error: result.error,
-                variation,
-              })
-              return { ...result, variation }
+          // Generate each asset with different focus
+          const promises = assets.map(async (asset, idx) => {
+            const result = await generateForPlatform(
+              asset.platform,
+              rawContent,
+              asset.focus,
+              mock,
+              goalInstruction,
+              brandVoiceInstruction
+            )
+            send({
+              type: "result",
+              platform: result.platform,
+              content: result.content,
+              error: result.error,
+              assetIndex: asset.assetIndex,
+              focus: asset.focus,
             })
+            return { ...result, assetIndex: asset.assetIndex, focus: asset.focus }
           })
 
           const settled = await Promise.allSettled(promises)
