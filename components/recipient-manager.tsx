@@ -1,49 +1,12 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useAuth } from "@/lib/auth-context"
+import { getDbInstance } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { Plus, Trash2, Pencil, Check, X, Phone, Loader2 } from "lucide-react"
-
-const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
-const BASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)`
-
-async function firestoreFetch(path: string, user: any, options: RequestInit = {}) {
-  const token = await user.getIdToken()
-  const url = `${BASE_URL}${path}`
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
-    },
-  })
-  if (!res.ok) {
-    const body = await res.text()
-    throw new Error(`Firestore API error ${res.status}: ${body}`)
-  }
-  return res.json()
-}
-
-function parseDoc(doc: any) {
-  const id = doc.name.split("/").pop()!
-  const fields = doc.fields || {}
-  const decode = (v: any): any => {
-    if (!v) return v
-    const key = Object.keys(v)[0]
-    if (key === "stringValue") return v.stringValue
-    if (key === "integerValue") return Number(v.integerValue)
-    return v
-  }
-  const data: Record<string, any> = {}
-  for (const [k, v] of Object.entries(fields)) {
-    data[k] = decode(v)
-  }
-  return { id, ...data }
-}
 
 interface Recipient {
   id: string
@@ -68,43 +31,39 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
   const [editPhone, setEditPhone] = useState("")
   const [editLabel, setEditLabel] = useState("")
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
+  const dbRef = useRef<any>(null)
+
+  const ensureDb = useCallback(async () => {
+    if (!dbRef.current) {
+      console.log("[RecipientManager] getting db instance...")
+      dbRef.current = await getDbInstance()
+      console.log("[RecipientManager] db ready")
+    }
+    return dbRef.current
+  }, [])
 
   const loadRecipients = useCallback(async () => {
     if (!user) return
     setLoading(true)
     try {
       console.log("[RecipientManager] loading recipients...")
-      const data = await firestoreFetch("/documents:runQuery", user, {
-        method: "POST",
-        body: JSON.stringify({
-          structuredQuery: {
-            from: [{ collectionId: "whatsapp_recipients" }],
-            where: {
-              fieldFilter: {
-                field: { fieldPath: "userId" },
-                op: "EQUAL",
-                value: { stringValue: user.uid },
-              },
-            },
-            orderBy: [{ field: { fieldPath: "createdAt" }, direction: "DESCENDING" }],
-          },
-        }),
-      })
-      const docs: Recipient[] = []
-      for (const result of data) {
-        if (result.document) {
-          const parsed: any = parseDoc(result.document)
-          docs.push({ id: parsed.id, phoneNumber: parsed.phoneNumber, label: parsed.label })
-        }
-      }
-      console.log("[RecipientManager] loaded", docs.length, "recipients")
-      setRecipients(docs)
+      // Use SDK for reads (works)
+      const db = await ensureDb()
+      const { collection, getDocs, query, where, orderBy } = await import("firebase/firestore")
+      const q = query(
+        collection(db, "whatsapp_recipients"),
+        where("userId", "==", user.uid),
+        orderBy("createdAt", "desc")
+      )
+      const snap = await getDocs(q)
+      console.log("[RecipientManager] loaded", snap.docs.length, "recipients")
+      setRecipients(snap.docs.map((doc) => ({ id: doc.id, phoneNumber: doc.data().phoneNumber, label: doc.data().label })))
     } catch (err) {
       console.error("[RecipientManager] load error:", err)
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, ensureDb])
 
   useEffect(() => {
     loadRecipients()
@@ -135,20 +94,19 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
     const startTime = Date.now()
 
     try {
-      const data = await firestoreFetch("/documents/whatsapp_recipients", user, {
+      // Use API route for writes (server-side gRPC)
+      const res = await fetch("/api/recipients", {
         method: "POST",
-        body: JSON.stringify({
-          fields: {
-            userId: { stringValue: user.uid },
-            phoneNumber: { stringValue: phone },
-            label: { stringValue: label },
-            createdAt: { integerValue: String(Date.now()) },
-          },
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.uid, phoneNumber: phone, label }),
       })
-      const refId = data.name.split("/").pop()!
-      console.log("[RecipientManager] addDoc done in", Date.now() - startTime, "ms, id:", refId)
-      setRecipients((prev) => prev.map((r) => (r.id === tempId ? { ...r, id: refId } : r)))
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || `HTTP ${res.status}`)
+      }
+      const data = await res.json()
+      console.log("[RecipientManager] addDoc done in", Date.now() - startTime, "ms, id:", data.id)
+      setRecipients((prev) => prev.map((r) => (r.id === tempId ? { ...r, id: data.id } : r)))
       toast.success("Recipient added!")
     } catch (err: any) {
       console.error("[RecipientManager] addDoc error:", err.message)
@@ -165,9 +123,11 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
     setRecipients((prevList) => prevList.filter((r) => r.id !== id))
     try {
       console.log("[RecipientManager] deleteDoc starting...")
-      await firestoreFetch(`/documents/whatsapp_recipients/${id}`, user, {
-        method: "DELETE",
-      })
+      const res = await fetch(`/api/recipients?id=${id}`, { method: "DELETE" })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || `HTTP ${res.status}`)
+      }
       console.log("[RecipientManager] deleteDoc done")
       toast.success("Recipient removed")
     } catch (err) {
@@ -193,15 +153,15 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
     )
     try {
       console.log("[RecipientManager] updateDoc starting...")
-      await firestoreFetch(`/documents/whatsapp_recipients/${id}`, user, {
-        method: "PATCH",
-        body: JSON.stringify({
-          fields: {
-            phoneNumber: { stringValue: editPhone },
-            label: { stringValue: editLabel },
-          },
-        }),
+      const res = await fetch("/api/recipients", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, phoneNumber: editPhone, label: editLabel }),
       })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || `HTTP ${res.status}`)
+      }
       console.log("[RecipientManager] updateDoc done")
       toast.success("Recipient updated!")
     } catch (err) {
