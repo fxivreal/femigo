@@ -71,7 +71,7 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
     setAdding(true)
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
+    const timeout = setTimeout(() => controller.abort(), 15000)
 
     fetch("/api/recipients", {
       method: "POST",
