@@ -29,6 +29,7 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editPhone, setEditPhone] = useState("")
   const [editLabel, setEditLabel] = useState("")
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
 
   const loadRecipients = async () => {
     if (!user) return
@@ -62,24 +63,28 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
       toast.error("Enter a valid phone number")
       return
     }
+    const label = newLabel.trim() || phone
+    const tempId = `temp_${Date.now()}`
+    setRecipients((prev) => [{ id: tempId, phoneNumber: phone, label }, ...prev])
+    setNewPhone("")
+    setNewLabel("")
     setAdding(true)
     try {
       const res = await fetch("/api/recipients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.uid,
-          phoneNumber: phone,
-          label: newLabel.trim() || phone,
-        }),
+        body: JSON.stringify({ userId: user.uid, phoneNumber: phone, label }),
       })
       if (res.ok) {
+        const data = await res.json()
+        setRecipients((prev) => prev.map((r) => (r.id === tempId ? { ...r, id: data.id } : r)))
         toast.success("Recipient added!")
-        setNewPhone("")
-        setNewLabel("")
-        loadRecipients()
+      } else {
+        setRecipients((prev) => prev.filter((r) => r.id !== tempId))
+        toast.error("Failed to add recipient")
       }
     } catch {
+      setRecipients((prev) => prev.filter((r) => r.id !== tempId))
       toast.error("Failed to add recipient")
     } finally {
       setAdding(false)
@@ -87,30 +92,51 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
   }
 
   const handleDelete = async (id: string) => {
+    const prev = recipients
+    setDeletingIds((prevSet) => new Set(prevSet).add(id))
+    setRecipients((prevList) => prevList.filter((r) => r.id !== id))
     try {
       const res = await fetch(`/api/recipients?id=${id}`, { method: "DELETE" })
-      if (res.ok) {
+      if (!res.ok) {
+        setRecipients(prev)
+        toast.error("Failed to delete")
+      } else {
         toast.success("Recipient removed")
-        loadRecipients()
       }
     } catch {
+      setRecipients(prev)
       toast.error("Failed to delete")
+    } finally {
+      setDeletingIds((prevSet) => {
+        const next = new Set(prevSet)
+        next.delete(id)
+        return next
+      })
     }
   }
 
   const handleUpdate = async (id: string) => {
+    const prev = recipients
+    setEditingId(null)
+    setRecipients((prevList) =>
+      prevList.map((r) =>
+        r.id === id ? { ...r, phoneNumber: editPhone, label: editLabel } : r
+      )
+    )
     try {
       const res = await fetch("/api/recipients", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, phoneNumber: editPhone, label: editLabel }),
       })
-      if (res.ok) {
+      if (!res.ok) {
+        setRecipients(prev)
+        toast.error("Failed to update")
+      } else {
         toast.success("Recipient updated!")
-        setEditingId(null)
-        loadRecipients()
       }
     } catch {
+      setRecipients(prev)
       toast.error("Failed to update")
     }
   }
@@ -216,8 +242,18 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
                     <Button size="xs" variant="ghost" className="h-6 w-6 p-0" onClick={() => startEdit(r)}>
                       <Pencil className="size-2.5" />
                     </Button>
-                    <Button size="xs" variant="ghost" className="h-6 w-6 p-0 text-destructive" onClick={() => handleDelete(r.id)}>
-                      <Trash2 className="size-2.5" />
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      className="h-6 w-6 p-0 text-destructive"
+                      onClick={() => handleDelete(r.id)}
+                      disabled={deletingIds.has(r.id)}
+                    >
+                      {deletingIds.has(r.id) ? (
+                        <Loader2 className="size-2.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="size-2.5" />
+                      )}
                     </Button>
                   </div>
                 </>

@@ -1,18 +1,9 @@
 import { NextResponse } from "next/server"
-import { headers } from "next/headers"
+import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, where, orderBy, serverTimestamp } from "firebase/firestore"
 
 async function getDb() {
   const { getDbInstance } = await import("@/lib/firebase")
   return getDbInstance()
-}
-
-async function verifyAuth() {
-  const { getAuthInstance } = await import("@/lib/firebase")
-  const auth = await getAuthInstance()
-  const headerList = await headers()
-  // In a real app, verify the Firebase ID token from Authorization header
-  // For now, we use the userId from the request body / query
-  return auth
 }
 
 export async function GET(request: Request) {
@@ -24,7 +15,6 @@ export async function GET(request: Request) {
     }
 
     const db = await getDb()
-    const { collection, query, where, orderBy, getDocs } = await import("firebase/firestore")
     const q = query(
       collection(db, "whatsapp_recipients"),
       where("userId", "==", userId),
@@ -50,7 +40,6 @@ export async function POST(request: Request) {
     }
 
     const db = await getDb()
-    const { addDoc, collection, serverTimestamp } = await import("firebase/firestore")
     const ref = await addDoc(collection(db, "whatsapp_recipients"), {
       userId,
       phoneNumber,
@@ -75,7 +64,6 @@ export async function PUT(request: Request) {
     }
 
     const db = await getDb()
-    const { updateDoc, doc } = await import("firebase/firestore")
     const updateData: Record<string, string> = {}
     if (phoneNumber) updateData.phoneNumber = phoneNumber
     if (label) updateData.label = label
@@ -99,7 +87,6 @@ export async function DELETE(request: Request) {
     }
 
     const db = await getDb()
-    const { deleteDoc, doc } = await import("firebase/firestore")
     await deleteDoc(doc(db, "whatsapp_recipients", id))
 
     return NextResponse.json({ success: true })
