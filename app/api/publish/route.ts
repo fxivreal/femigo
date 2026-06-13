@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { publishAll, DEFAULT_QUEUE_CONFIG } from "@/lib/publish/engine"
 import type { PublishJob } from "@/lib/publish/types"
 
+export const maxDuration = 60
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()

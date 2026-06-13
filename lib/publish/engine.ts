@@ -67,7 +67,7 @@ export async function publishAll(options: PublishAllOptions): Promise<PublishJob
     })
   }
 
-  processQueue(jobs, queueConfig, onProgress, onError).catch(() => {})
+  await processQueue(jobs, queueConfig, onProgress, onError)
 
   return jobs
 }
