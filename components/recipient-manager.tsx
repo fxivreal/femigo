@@ -1,12 +1,16 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useAuth } from "@/lib/auth-context"
-import { getDbInstance } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { Plus, Trash2, Pencil, Check, X, Phone, Loader2 } from "lucide-react"
+import { collection, addDoc, getDocs, query, where, orderBy, deleteDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore"
+import { getFirestore } from "firebase/firestore"
+import app from "@/lib/firebase"
+
+const db = getFirestore(app)
 
 interface Recipient {
   id: string
@@ -36,8 +40,6 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
     if (!user) return
     setLoading(true)
     try {
-      const { collection, query, where, orderBy, getDocs } = await import("firebase/firestore")
-      const db = await getDbInstance()
       const q = query(
         collection(db, "whatsapp_recipients"),
         where("userId", "==", user.uid),
@@ -77,26 +79,22 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
     setNewLabel("")
     setAdding(true)
 
-    ;(async () => {
-      try {
-        const { collection, addDoc, serverTimestamp } = await import("firebase/firestore")
-        const db = await getDbInstance()
-        const ref = await addDoc(collection(db, "whatsapp_recipients"), {
-          userId: user.uid,
-          phoneNumber: phone,
-          label,
-          createdAt: serverTimestamp(),
-        })
+    addDoc(collection(db, "whatsapp_recipients"), {
+      userId: user.uid,
+      phoneNumber: phone,
+      label,
+      createdAt: serverTimestamp(),
+    })
+      .then((ref) => {
         setRecipients((prev) => prev.map((r) => (r.id === tempId ? { ...r, id: ref.id } : r)))
         toast.success("Recipient added!")
-      } catch (err) {
+      })
+      .catch((err) => {
         console.error("Add recipient error:", err)
         setRecipients((prev) => prev.filter((r) => r.id !== tempId))
         toast.error("Failed to save")
-      } finally {
-        setAdding(false)
-      }
-    })()
+      })
+      .finally(() => setAdding(false))
   }
 
   const handleDelete = async (id: string) => {
@@ -104,8 +102,6 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
     setDeletingIds((prevSet) => new Set(prevSet).add(id))
     setRecipients((prevList) => prevList.filter((r) => r.id !== id))
     try {
-      const { deleteDoc, doc } = await import("firebase/firestore")
-      const db = await getDbInstance()
       await deleteDoc(doc(db, "whatsapp_recipients", id))
       toast.success("Recipient removed")
     } catch (err) {
@@ -130,8 +126,6 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
       )
     )
     try {
-      const { updateDoc, doc } = await import("firebase/firestore")
-      const db = await getDbInstance()
       await updateDoc(doc(db, "whatsapp_recipients", id), { phoneNumber: editPhone, label: editLabel })
       toast.success("Recipient updated!")
     } catch (err) {
