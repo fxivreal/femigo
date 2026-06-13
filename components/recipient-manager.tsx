@@ -56,7 +56,7 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
     return cleaned
   }
 
-  const handleAdd = async () => {
+  const handleAdd = () => {
     if (!user || !newPhone.trim()) return
     const phone = formatPhone(newPhone.trim())
     if (phone.length < 10) {
@@ -69,26 +69,27 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
     setNewPhone("")
     setNewLabel("")
     setAdding(true)
-    try {
-      const res = await fetch("/api/recipients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.uid, phoneNumber: phone, label }),
+
+    fetch("/api/recipients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user.uid, phoneNumber: phone, label }),
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json()
+          setRecipients((prev) => prev.map((r) => (r.id === tempId ? { ...r, id: data.id } : r)))
+          toast.success("Recipient added!")
+        } else {
+          setRecipients((prev) => prev.filter((r) => r.id !== tempId))
+          toast.error("Failed to add recipient")
+        }
       })
-      if (res.ok) {
-        const data = await res.json()
-        setRecipients((prev) => prev.map((r) => (r.id === tempId ? { ...r, id: data.id } : r)))
-        toast.success("Recipient added!")
-      } else {
+      .catch(() => {
         setRecipients((prev) => prev.filter((r) => r.id !== tempId))
         toast.error("Failed to add recipient")
-      }
-    } catch {
-      setRecipients((prev) => prev.filter((r) => r.id !== tempId))
-      toast.error("Failed to add recipient")
-    } finally {
-      setAdding(false)
-    }
+      })
+      .finally(() => setAdding(false))
   }
 
   const handleDelete = async (id: string) => {

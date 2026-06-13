@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server"
-import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, where, orderBy, serverTimestamp } from "firebase/firestore"
+import { initializeApp, getApps } from "firebase/app"
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, where, orderBy, serverTimestamp } from "firebase/firestore"
 
-async function getDb() {
-  const { getDbInstance } = await import("@/lib/firebase")
-  return getDbInstance()
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
+
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
+const db = getFirestore(app)
 
 export async function GET(request: Request) {
   try {
@@ -14,7 +22,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "userId required" }, { status: 400 })
     }
 
-    const db = await getDb()
     const q = query(
       collection(db, "whatsapp_recipients"),
       where("userId", "==", userId),
@@ -39,7 +46,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "userId and phoneNumber required" }, { status: 400 })
     }
 
-    const db = await getDb()
     const ref = await addDoc(collection(db, "whatsapp_recipients"), {
       userId,
       phoneNumber,
@@ -63,7 +69,6 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "id required" }, { status: 400 })
     }
 
-    const db = await getDb()
     const updateData: Record<string, string> = {}
     if (phoneNumber) updateData.phoneNumber = phoneNumber
     if (label) updateData.label = label
@@ -86,7 +91,6 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "id required" }, { status: 400 })
     }
 
-    const db = await getDb()
     await deleteDoc(doc(db, "whatsapp_recipients", id))
 
     return NextResponse.json({ success: true })
