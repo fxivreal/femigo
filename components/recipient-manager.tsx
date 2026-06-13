@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/lib/auth-context"
+import { getDbInstance } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -35,9 +36,15 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
     if (!user) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/recipients?userId=${user.uid}`)
-      const data = await res.json()
-      if (data.recipients) setRecipients(data.recipients)
+      const { collection, query, where, orderBy, getDocs } = await import("firebase/firestore")
+      const db = await getDbInstance()
+      const q = query(
+        collection(db, "whatsapp_recipients"),
+        where("userId", "==", user.uid),
+        orderBy("createdAt", "desc")
+      )
+      const snap = await getDocs(q)
+      setRecipients(snap.docs.map((doc) => ({ id: doc.id, phoneNumber: doc.data().phoneNumber, label: doc.data().label })))
     } catch {
       // silent
     } finally {
@@ -70,36 +77,26 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
     setNewLabel("")
     setAdding(true)
 
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 15000)
-
-    fetch("/api/recipients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.uid, phoneNumber: phone, label }),
-      signal: controller.signal,
-    })
-      .then(async (res) => {
-        clearTimeout(timeout)
-        if (res.ok) {
-          const data = await res.json()
-          setRecipients((prev) => prev.map((r) => (r.id === tempId ? { ...r, id: data.id } : r)))
-          toast.success("Recipient added!")
-        } else {
-          const text = await res.text().catch(() => "")
-          console.error("Add recipient failed:", res.status, text)
-          setRecipients((prev) => prev.filter((r) => r.id !== tempId))
-          toast.error(`Failed (${res.status})`)
-        }
-      })
-      .catch((err) => {
-        clearTimeout(timeout)
+    ;(async () => {
+      try {
+        const { collection, addDoc, serverTimestamp } = await import("firebase/firestore")
+        const db = await getDbInstance()
+        const ref = await addDoc(collection(db, "whatsapp_recipients"), {
+          userId: user.uid,
+          phoneNumber: phone,
+          label,
+          createdAt: serverTimestamp(),
+        })
+        setRecipients((prev) => prev.map((r) => (r.id === tempId ? { ...r, id: ref.id } : r)))
+        toast.success("Recipient added!")
+      } catch (err) {
         console.error("Add recipient error:", err)
         setRecipients((prev) => prev.filter((r) => r.id !== tempId))
-        const msg = err?.name === "AbortError" ? "Request timed out" : "Failed to save"
-        toast.error(msg)
-      })
-      .finally(() => setAdding(false))
+        toast.error("Failed to save")
+      } finally {
+        setAdding(false)
+      }
+    })()
   }
 
   const handleDelete = async (id: string) => {
@@ -107,14 +104,12 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
     setDeletingIds((prevSet) => new Set(prevSet).add(id))
     setRecipients((prevList) => prevList.filter((r) => r.id !== id))
     try {
-      const res = await fetch(`/api/recipients?id=${id}`, { method: "DELETE" })
-      if (!res.ok) {
-        setRecipients(prev)
-        toast.error("Failed to delete")
-      } else {
-        toast.success("Recipient removed")
-      }
-    } catch {
+      const { deleteDoc, doc } = await import("firebase/firestore")
+      const db = await getDbInstance()
+      await deleteDoc(doc(db, "whatsapp_recipients", id))
+      toast.success("Recipient removed")
+    } catch (err) {
+      console.error("Delete recipient error:", err)
       setRecipients(prev)
       toast.error("Failed to delete")
     } finally {
@@ -135,18 +130,12 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
       )
     )
     try {
-      const res = await fetch("/api/recipients", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, phoneNumber: editPhone, label: editLabel }),
-      })
-      if (!res.ok) {
-        setRecipients(prev)
-        toast.error("Failed to update")
-      } else {
-        toast.success("Recipient updated!")
-      }
-    } catch {
+      const { updateDoc, doc } = await import("firebase/firestore")
+      const db = await getDbInstance()
+      await updateDoc(doc(db, "whatsapp_recipients", id), { phoneNumber: editPhone, label: editLabel })
+      toast.success("Recipient updated!")
+    } catch (err) {
+      console.error("Update recipient error:", err)
       setRecipients(prev)
       toast.error("Failed to update")
     }
@@ -167,7 +156,6 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
         </div>
       )}
 
-      {/* Add form */}
       <div className="flex gap-2 flex-wrap sm:flex-nowrap">
         <Input
           placeholder="Phone number (e.g. 08012345678)"
@@ -194,7 +182,6 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
         </Button>
       </div>
 
-      {/* Recipient list */}
       {loading ? (
         <div className="flex items-center justify-center py-4">
           <Loader2 className="size-4 animate-spin text-muted-foreground" />
