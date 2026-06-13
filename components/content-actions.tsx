@@ -11,7 +11,9 @@ import {
   StarOff,
   Loader2,
   MessageCircle,
+  Send,
 } from "lucide-react"
+import { PublishButton } from "@/components/publish-button"
 
 interface ContentActionsProps {
   content: string
@@ -22,6 +24,8 @@ interface ContentActionsProps {
   onRegenerate?: () => void
   onFavoriteToggle?: (id: string, favorited: boolean) => Promise<void>
   showRegenerate?: boolean
+  /** Pass all generated items for "Publish All" — each item needs { content, label?, platformType? } */
+  allPublishItems?: { content: string; label?: string; platformType?: string }[]
 }
 
 export function ContentActions({
@@ -33,6 +37,7 @@ export function ContentActions({
   onRegenerate,
   onFavoriteToggle,
   showRegenerate = false,
+  allPublishItems,
 }: ContentActionsProps) {
   const [favoriting, setFavoriting] = useState(false)
   const [favoriteState, setFavoriteState] = useState(isFavorited ?? false)
@@ -94,20 +99,12 @@ export function ContentActions({
       </Button>
 
       {platform && platform.startsWith("whatsapp_") && (
-        <Button
-          size="sm"
+        <PublishButton
+          items={[{ content, platformType: platform }]}
+          buttonLabel="Publish"
           variant="ghost"
           className="h-7 text-xs gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
-          onClick={async () => {
-            await navigator.clipboard.writeText(content)
-            const encoded = encodeURIComponent(content.slice(0, 1500))
-            window.open(`https://wa.me/?text=${encoded}`, "_blank")
-            toast.success("Copied & WhatsApp opened!")
-          }}
-        >
-          <MessageCircle className="size-3" />
-          <span className="hidden sm:inline">Send to WhatsApp</span>
-        </Button>
+        />
       )}
 
       {contentId && onFavoriteToggle && (

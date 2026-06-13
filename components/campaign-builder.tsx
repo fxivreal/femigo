@@ -12,10 +12,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import {
   Sparkles, Check, Loader2, Copy, Download, Plus, Pencil, Trash2,
-  ArrowLeft, MessageCircle, ChevronDown, ChevronUp,
+  ArrowLeft, MessageCircle, ChevronDown, ChevronUp, Send,
 } from "lucide-react"
 import { ContentInput } from "@/components/content-input"
 import { cn } from "@/lib/utils"
+import { PublishButton } from "@/components/publish-button"
 
 // ── Types ──────────────────────────────────────────
 
@@ -753,6 +754,17 @@ export function CampaignBuilder() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">Campaign Timeline</h2>
             <div className="flex gap-1">
+              <PublishButton
+                items={timeline.map((t) => ({
+                  content: t.content,
+                  platformType: t.type,
+                  label: t.label,
+                }))}
+                buttonLabel="Publish Campaign"
+                buttonSize="sm"
+                variant="ghost"
+                className="h-7 text-xs gap-1 text-green-600 hover:text-green-700"
+              />
               <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={handleExport}>
                 <Download className="size-3" />
                 Export

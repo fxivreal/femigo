@@ -9,6 +9,8 @@ import type {
   WABroadcastDoc,
   WAFunnelDoc,
   WAFollowUpDoc,
+  WARecipientInput,
+  WARecipientDoc,
 } from "./types"
 import {
   collection,
@@ -238,6 +240,45 @@ export async function listFunnelSteps(
   const q = query(collection(db, "whatsapp_funnels"), ...base, orderBy("order", "asc"))
   const snap = await getDocs(q)
   return snap.docs.map((d) => snapshotToDoc<WAFunnelDoc>(d))
+}
+
+// ── Recipients ──
+
+export async function createRecipient(
+  userId: string,
+  input: WARecipientInput
+): Promise<string> {
+  const db = await getDb()
+  const ref = await addDoc(collection(db, "whatsapp_recipients"), {
+    ...input,
+    userId,
+    createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+export async function updateRecipient(
+  recipientId: string,
+  data: Partial<WARecipientInput>
+): Promise<void> {
+  const db = await getDb()
+  await updateDoc(doc(db, "whatsapp_recipients", recipientId), data)
+}
+
+export async function deleteRecipient(recipientId: string): Promise<void> {
+  const db = await getDb()
+  await deleteDoc(doc(db, "whatsapp_recipients", recipientId))
+}
+
+export async function listRecipients(userId: string): Promise<WARecipientDoc[]> {
+  const db = await getDb()
+  const q = query(
+    collection(db, "whatsapp_recipients"),
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc")
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => snapshotToDoc<WARecipientDoc>(d))
 }
 
 // ── Follow-ups ──

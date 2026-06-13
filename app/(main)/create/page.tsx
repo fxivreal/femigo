@@ -11,11 +11,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { Sparkles, Loader2, Target, MessageCircle, ArrowRight } from "lucide-react"
+import { Sparkles, Loader2, Target, MessageCircle, ArrowRight, Send } from "lucide-react"
 import { GenerationProgress } from "@/components/generation-progress"
 import { ContentActions } from "@/components/content-actions"
 import { AnalysisDashboard } from "@/components/analysis-dashboard"
 import { ContentInput } from "@/components/content-input"
+import { PublishButton } from "@/components/publish-button"
 
 const modeList = Object.values(generationModes)
 
@@ -613,6 +614,38 @@ export default function CreatePage() {
             coverage={coverage}
             totalAssets={modeConfig.totalAssets}
           />
+        </div>
+      )}
+
+      {/* Publish All */}
+      {showResults && Object.values(generatedResults).some((arr) => arr.length > 0) && (
+        <div className="mb-6">
+          <Card className="border-green-200 bg-green-50/50">
+            <CardContent className="py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Send className="size-4 text-green-600 shrink-0" />
+                  <p className="text-sm text-green-800 font-medium">
+                    Publish all generated content
+                  </p>
+                </div>
+                <PublishButton
+                  items={Object.entries(generatedResults)
+                    .filter(([, arr]) => arr.length > 0)
+                    .flatMap(([platform, arr]) =>
+                      arr.filter(Boolean).map((content, idx) => ({
+                        content,
+                        platformType: platform,
+                        label: `${platformLabels[platform] || platform} #${idx + 1}`,
+                      }))
+                    )}
+                  buttonLabel="Publish All"
+                  buttonSize="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white shrink-0"
+                />
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 

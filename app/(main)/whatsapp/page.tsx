@@ -9,7 +9,7 @@ import type { ContentAnalysis } from "@/lib/analysis-types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { toast } from "sonner"
-import { Sparkles, Target, Loader2, Check, MessageCircle } from "lucide-react"
+import { Sparkles, Target, Loader2, Check, MessageCircle, Send } from "lucide-react"
 import { ContentInput } from "@/components/content-input"
 import { WhatsAppSuiteCard } from "@/components/whatsapp-suite-card"
 import { WhatsAppStatusViewer } from "@/components/whatsapp-status-viewer"
@@ -17,6 +17,7 @@ import { WhatsAppBroadcastViewer } from "@/components/whatsapp-broadcast-viewer"
 import { WhatsAppFunnelViewer } from "@/components/whatsapp-funnel-viewer"
 import { WhatsAppFollowUpViewer } from "@/components/whatsapp-followup-viewer"
 import { QuickReplySection } from "@/components/quick-reply-section"
+import { PublishButton } from "@/components/publish-button"
 
 type GenerationStatus = Record<string, "idle" | "generating" | "done" | "error">
 
@@ -508,6 +509,36 @@ export default function WhatsAppPage() {
                     </div>
                   )
                 })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Publish All */}
+      {showResults && Object.keys(results).length > 0 && (
+        <div className="mb-6">
+          <Card className="border-green-200 bg-green-50/50">
+            <CardContent className="py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Send className="size-4 text-green-600 shrink-0" />
+                  <p className="text-sm text-green-800 font-medium">
+                    Publish all content to WhatsApp
+                  </p>
+                </div>
+                <PublishButton
+                  items={Object.entries(results)
+                    .filter(([, c]) => c)
+                    .map(([type, content]) => ({
+                      content,
+                      platformType: `whatsapp_${type}`,
+                      label: (whatsappContentTypes.find((t) => t.id === type)?.label || type),
+                    }))}
+                  buttonLabel="Publish All"
+                  buttonSize="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white shrink-0"
+                />
               </div>
             </CardContent>
           </Card>

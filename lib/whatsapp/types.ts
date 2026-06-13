@@ -101,6 +101,21 @@ export interface WAFunnelDoc extends WAFunnel {
   id: string
 }
 
+// ── Recipient ──
+export interface WARecipientInput {
+  phoneNumber: string
+  label: string
+}
+
+export interface WARecipient extends WARecipientInput {
+  userId: string
+  createdAt: Date
+}
+
+export interface WARecipientDoc extends WARecipient {
+  id: string
+}
+
 // ── Follow-up ──
 export type FollowUpType =
   | "NEW_LEAD"

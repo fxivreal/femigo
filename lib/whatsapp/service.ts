@@ -14,15 +14,15 @@ import * as db from "./db"
 
 export interface IWhatsAppService {
   /** Send a single status message */
-  sendStatus(userId: string, data: WAStatusInput): Promise<SendResult>
+  sendStatus(userId: string, data: WAStatusInput, recipientPhone?: string): Promise<SendResult>
   /** Send multiple statuses in batch */
-  sendStatuses(userId: string, items: WAStatusInput[]): Promise<SendResult[]>
+  sendStatuses(userId: string, items: WAStatusInput[], recipientPhone?: string): Promise<SendResult[]>
   /** Send a broadcast message */
-  sendBroadcast(userId: string, data: WABroadcastInput): Promise<SendResult>
+  sendBroadcast(userId: string, data: WABroadcastInput, recipientPhone?: string): Promise<SendResult>
   /** Send a funnel step */
-  sendFunnelStep(userId: string, data: WAFunnelInput): Promise<SendResult>
+  sendFunnelStep(userId: string, data: WAFunnelInput, recipientPhone?: string): Promise<SendResult>
   /** Send a follow-up message */
-  sendFollowUp(userId: string, data: WAFollowUpInput): Promise<SendResult>
+  sendFollowUp(userId: string, data: WAFollowUpInput, recipientPhone?: string): Promise<SendResult>
   /** Save a campaign and persist all its assets to the database */
   saveCampaign(
     userId: string,
@@ -41,7 +41,7 @@ export interface IWhatsAppService {
 // ── Mock Service (current — saves to Firestore only) ──
 
 export class MockWhatsAppService implements IWhatsAppService {
-  async sendStatus(userId: string, data: WAStatusInput): Promise<SendResult> {
+  async sendStatus(userId: string, data: WAStatusInput, _recipientPhone?: string): Promise<SendResult> {
     const id = await db.createStatus(userId, data)
     return {
       messageId: `mock_status_${id}`,
@@ -50,7 +50,7 @@ export class MockWhatsAppService implements IWhatsAppService {
     }
   }
 
-  async sendStatuses(userId: string, items: WAStatusInput[]): Promise<SendResult[]> {
+  async sendStatuses(userId: string, items: WAStatusInput[], _recipientPhone?: string): Promise<SendResult[]> {
     const ids = await db.createStatuses(userId, items)
     return ids.map((id) => ({
       messageId: `mock_status_${id}`,
@@ -59,7 +59,7 @@ export class MockWhatsAppService implements IWhatsAppService {
     }))
   }
 
-  async sendBroadcast(userId: string, data: WABroadcastInput): Promise<SendResult> {
+  async sendBroadcast(userId: string, data: WABroadcastInput, _recipientPhone?: string): Promise<SendResult> {
     const id = await db.createBroadcast(userId, data)
     return {
       messageId: `mock_broadcast_${id}`,
@@ -68,7 +68,7 @@ export class MockWhatsAppService implements IWhatsAppService {
     }
   }
 
-  async sendFunnelStep(userId: string, data: WAFunnelInput): Promise<SendResult> {
+  async sendFunnelStep(userId: string, data: WAFunnelInput, _recipientPhone?: string): Promise<SendResult> {
     const id = await db.createFunnelStep(userId, data)
     return {
       messageId: `mock_funnel_${id}`,
@@ -77,7 +77,7 @@ export class MockWhatsAppService implements IWhatsAppService {
     }
   }
 
-  async sendFollowUp(userId: string, data: WAFollowUpInput): Promise<SendResult> {
+  async sendFollowUp(userId: string, data: WAFollowUpInput, _recipientPhone?: string): Promise<SendResult> {
     const id = await db.createFollowUp(userId, data)
     return {
       messageId: `mock_followup_${id}`,
@@ -135,7 +135,7 @@ export class MockWhatsAppService implements IWhatsAppService {
   }
 }
 
-// ── WhatsApp Business API Service (stub — to be implemented) ──
+// ── WhatsApp Business API Service ──
 
 export class WhatsAppBusinessApiService implements IWhatsAppService {
   private config: WhatsAppConfig
@@ -148,39 +148,121 @@ export class WhatsAppBusinessApiService implements IWhatsAppService {
     return `wamid_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   }
 
-  async sendStatus(userId: string, data: WAStatusInput): Promise<SendResult> {
-    // TODO: POST to https://graph.facebook.com/{version}/{phone-number-id}/messages
-    // with type: "text" and status content
+  private async postToApi(text: string, recipientPhone?: string): Promise<{ messageId?: string; error?: string }> {
+    const phoneNumberId = this.config.businessPhoneNumberId
+    const accessToken = this.config.accessToken
+    const apiVersion = this.config.apiVersion || "v21.0"
+
+    if (!phoneNumberId || !accessToken) {
+      return { error: "WhatsApp Business API not configured. Set WABA_PHONE_NUMBER_ID and WABA_ACCESS_TOKEN." }
+    }
+
+    if (!recipientPhone) {
+      return { error: "No recipient phone number provided." }
+    }
+
+    try {
+      const res = await fetch(
+        `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            to: recipientPhone,
+            type: "text",
+            text: { body: text },
+          }),
+        }
+      )
+
+      const json = await res.json()
+
+      if (!res.ok || json.error) {
+        return { error: json.error?.message || `HTTP ${res.status}: ${res.statusText}` }
+      }
+
+      const messageId: string = json.messages?.[0]?.id || this.genId()
+      return { messageId }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Network error"
+      return { error: message }
+    }
+  }
+
+  async sendStatus(userId: string, data: WAStatusInput, recipientPhone?: string): Promise<SendResult> {
     const dbId = await db.createStatus(userId, data)
-    const messageId = this.genId()
-    await db.updateStatus(dbId, { status: "sent", messageId })
-    return { messageId, status: "sent", timestamp: new Date() }
+
+    if (recipientPhone) {
+      const apiResult = await this.postToApi(data.content, recipientPhone)
+      if (apiResult.error) {
+        await db.updateStatus(dbId, { status: "failed" })
+        return { messageId: this.genId(), status: "failed", timestamp: new Date(), error: apiResult.error }
+      }
+      const messageId = apiResult.messageId || this.genId()
+      await db.updateStatus(dbId, { status: "sent", messageId })
+      return { messageId, status: "sent", timestamp: new Date() }
+    }
+
+    return { messageId: this.genId(), status: "draft", timestamp: new Date() }
   }
 
-  async sendStatuses(userId: string, items: WAStatusInput[]): Promise<SendResult[]> {
-    return Promise.all(items.map((item) => this.sendStatus(userId, item)))
+  async sendStatuses(userId: string, items: WAStatusInput[], recipientPhone?: string): Promise<SendResult[]> {
+    return Promise.all(items.map((item) => this.sendStatus(userId, item, recipientPhone)))
   }
 
-  async sendBroadcast(userId: string, data: WABroadcastInput): Promise<SendResult> {
-    // TODO: POST to WhatsApp API with type: "text"
+  async sendBroadcast(userId: string, data: WABroadcastInput, recipientPhone?: string): Promise<SendResult> {
     const dbId = await db.createBroadcast(userId, data)
-    const messageId = this.genId()
-    await db.updateBroadcast(dbId, { status: "sent", messageId })
-    return { messageId, status: "sent", timestamp: new Date() }
+
+    if (recipientPhone) {
+      const apiResult = await this.postToApi(data.content, recipientPhone)
+      if (apiResult.error) {
+        await db.updateBroadcast(dbId, { status: "failed" })
+        return { messageId: this.genId(), status: "failed", timestamp: new Date(), error: apiResult.error }
+      }
+      const messageId = apiResult.messageId || this.genId()
+      await db.updateBroadcast(dbId, { status: "sent", messageId })
+      return { messageId, status: "sent", timestamp: new Date() }
+    }
+
+    return { messageId: this.genId(), status: "draft", timestamp: new Date() }
   }
 
-  async sendFunnelStep(userId: string, data: WAFunnelInput): Promise<SendResult> {
+  async sendFunnelStep(userId: string, data: WAFunnelInput, recipientPhone?: string): Promise<SendResult> {
     const dbId = await db.createFunnelStep(userId, data)
-    const messageId = this.genId()
-    await db.updateFunnelStep(dbId, { status: "sent", messageId })
-    return { messageId, status: "sent", timestamp: new Date() }
+
+    if (recipientPhone) {
+      const apiResult = await this.postToApi(data.content, recipientPhone)
+      if (apiResult.error) {
+        await db.updateFunnelStep(dbId, { status: "failed" })
+        return { messageId: this.genId(), status: "failed", timestamp: new Date(), error: apiResult.error }
+      }
+      const messageId = apiResult.messageId || this.genId()
+      await db.updateFunnelStep(dbId, { status: "sent", messageId })
+      return { messageId, status: "sent", timestamp: new Date() }
+    }
+
+    return { messageId: this.genId(), status: "draft", timestamp: new Date() }
   }
 
-  async sendFollowUp(userId: string, data: WAFollowUpInput): Promise<SendResult> {
+  async sendFollowUp(userId: string, data: WAFollowUpInput, recipientPhone?: string): Promise<SendResult> {
     const dbId = await db.createFollowUp(userId, data)
-    const messageId = this.genId()
-    await db.updateFollowUp(dbId, { status: "sent", messageId })
-    return { messageId, status: "sent", timestamp: new Date() }
+
+    if (recipientPhone) {
+      const apiResult = await this.postToApi(data.content, recipientPhone)
+      if (apiResult.error) {
+        await db.updateFollowUp(dbId, { status: "failed" })
+        return { messageId: this.genId(), status: "failed", timestamp: new Date(), error: apiResult.error }
+      }
+      const messageId = apiResult.messageId || this.genId()
+      await db.updateFollowUp(dbId, { status: "sent", messageId })
+      return { messageId, status: "sent", timestamp: new Date() }
+    }
+
+    return { messageId: this.genId(), status: "draft", timestamp: new Date() }
   }
 
   async saveCampaign(

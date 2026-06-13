@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Home, Library, Sparkles, User, LogOut, MessageCircle, Megaphone } from "lucide-react"
+import { Home, Library, Sparkles, User, LogOut, MessageCircle, Megaphone, Link2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ const navItems = [
   { href: "/whatsapp", label: "WhatsApp", icon: MessageCircle },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/library", label: "Library", icon: Library },
+  { href: "/connections", label: "Connections", icon: Link2 },
   { href: "/account", label: "Account", icon: User },
 ]
 

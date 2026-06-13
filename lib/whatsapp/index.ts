@@ -20,6 +20,9 @@ export type {
   WAFollowUp,
   WAFollowUpDoc,
   FollowUpType,
+  WARecipientInput,
+  WARecipient,
+  WARecipientDoc,
 } from "./types"
 
 export type { IWhatsAppService } from "./service"
@@ -47,4 +50,8 @@ export {
   createFollowUps,
   updateFollowUp,
   listFollowUps,
+  createRecipient as createWARecipient,
+  updateRecipient as updateWARecipient,
+  deleteRecipient as deleteWARecipient,
+  listRecipients as listWARecipients,
 } from "./db"

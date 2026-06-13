@@ -80,3 +80,74 @@ Run `npm test` to execute 33 automated tests across 7 test suites in `lib/whatsa
 - [ ] Clicking shows loading state
 - [ ] AI scores replace heuristic scores on completion
 - [ ] Falls back to heuristic if AI call fails
+
+---
+
+# Auto-Publish Engine — Testing Checklist
+
+## Automated Tests
+
+### Recipient Management (4 tests)
+- [ ] Create recipient: POST /api/recipients returns id
+- [ ] List recipients: GET /api/recipients?userId=X returns array
+- [ ] Update recipient: PUT /api/recipients succeeds
+- [ ] Delete recipient: DELETE /api/recipients?id=X succeeds
+
+### Publish Queue (5 tests)
+- [ ] Publish single item: returns { success, messageId }
+- [ ] Publish batch: returns array of job statuses
+- [ ] Queue processes items with configurable delay
+- [ ] Failed items set status to "failed" with error message
+- [ ] All items set to "queued" initially before processing
+
+### WhatsApp Business API (3 tests)
+- [ ] Mock service saves to Firestore with status "draft"
+- [ ] WABA service posts to Meta Graph API with correct body
+- [ ] WABA service handles API error gracefully
+
+## Manual UI Tests
+
+### Recipient Manager
+- [ ] "Add" form accepts phone number + label
+- [ ] Auto-formats Nigerian numbers (+234 prefix)
+- [ ] List shows all saved recipients
+- [ ] Edit button opens inline edit fields
+- [ ] Delete button shows confirmation
+- [ ] Select radio works (on Connections page and Publish dialog)
+
+### Publish Button / Dialog
+- [ ] Button opens publish dialog
+- [ ] Dialog shows recipient selector with saved numbers
+- [ ] Inter-send delay slider works (1s-10s)
+- [ ] "Publish All" triggers queue and shows progress
+- [ ] Queue status shows per-item progress (Queued → Sending → Sent/Failed)
+- [ ] Progress bar fills as items are sent
+- [ ] Failed items show error message
+- [ ] Cancel button closes dialog
+- [ ] After all sent, button shows "Done" / "Published"
+
+### Publish from Create Page
+- [ ] "Publish All" bar appears in results section
+- [ ] All platform items are queued correctly
+- [ ] WhatsApp items get sent via WABA connector
+
+### Publish from WhatsApp Suite
+- [ ] "Publish All" bar appears in results section
+- [ ] Individual "Publish" button replaces old "Send to WhatsApp" in ContentActions
+- [ ] All selected WhatsApp types are queued
+
+### Publish from Campaign Builder
+- [ ] "Publish Campaign" button appears in the timeline header
+- [ ] All timeline items are queued in order
+- [ ] Inter-send delay prevents spam
+
+### Connections Page
+- [ ] Shows all platform connections (WhatsApp active, others "Coming soon")
+- [ ] WhatsApp Recipients section shows recipient manager
+- [ ] Add/edit/delete recipients works on this page
+
+### Performance & UX
+- [ ] Queue processes quickly (< 1s per item in mock mode)
+- [ ] UI does not freeze during publishing
+- [ ] Toast notifications for success/failure per item
+- [ ] Published items show "sent" badge
