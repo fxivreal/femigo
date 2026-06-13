@@ -70,24 +70,34 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
     setNewLabel("")
     setAdding(true)
 
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+
     fetch("/api/recipients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user.uid, phoneNumber: phone, label }),
+      signal: controller.signal,
     })
       .then(async (res) => {
+        clearTimeout(timeout)
         if (res.ok) {
           const data = await res.json()
           setRecipients((prev) => prev.map((r) => (r.id === tempId ? { ...r, id: data.id } : r)))
           toast.success("Recipient added!")
         } else {
+          const text = await res.text().catch(() => "")
+          console.error("Add recipient failed:", res.status, text)
           setRecipients((prev) => prev.filter((r) => r.id !== tempId))
-          toast.error("Failed to add recipient")
+          toast.error(`Failed (${res.status})`)
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        clearTimeout(timeout)
+        console.error("Add recipient error:", err)
         setRecipients((prev) => prev.filter((r) => r.id !== tempId))
-        toast.error("Failed to add recipient")
+        const msg = err?.name === "AbortError" ? "Request timed out" : "Failed to save"
+        toast.error(msg)
       })
       .finally(() => setAdding(false))
   }
