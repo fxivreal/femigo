@@ -49,15 +49,15 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
       console.log("[RecipientManager] loading recipients...")
       // Use SDK for reads (works)
       const db = await ensureDb()
-      const { collection, getDocs, query, where, orderBy } = await import("firebase/firestore")
+      const { collection, getDocs, query, where } = await import("firebase/firestore")
       const q = query(
         collection(db, "whatsapp_recipients"),
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc")
+        where("userId", "==", user.uid)
       )
       const snap = await getDocs(q)
       console.log("[RecipientManager] loaded", snap.docs.length, "recipients")
-      setRecipients(snap.docs.map((doc) => ({ id: doc.id, phoneNumber: doc.data().phoneNumber, label: doc.data().label })))
+      const docs = snap.docs.map((doc) => ({ id: doc.id, phoneNumber: doc.data().phoneNumber, label: doc.data().label }))
+      setRecipients(docs)
     } catch (err) {
       console.error("[RecipientManager] load error:", err)
     } finally {
