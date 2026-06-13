@@ -6,11 +6,20 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { Plus, Trash2, Pencil, Check, X, Phone, Loader2 } from "lucide-react"
-import { collection, addDoc, getDocs, query, where, orderBy, deleteDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore"
-import { getFirestore } from "firebase/firestore"
-import app from "@/lib/firebase"
+import { collection, addDoc, getDocs, query, where, orderBy, deleteDoc, updateDoc, doc, serverTimestamp, getFirestore } from "firebase/firestore"
+import { initializeApp, getApps, getApp } from "firebase/app"
+
+const app = getApps().length > 0 ? getApp() : initializeApp({
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+})
 
 const db = getFirestore(app)
+console.log("[RecipientManager] db initialized, project:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID)
 
 interface Recipient {
   id: string
@@ -35,20 +44,24 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
   const [editPhone, setEditPhone] = useState("")
   const [editLabel, setEditLabel] = useState("")
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
+  const loadAttempted = useRef(false)
 
   const loadRecipients = async () => {
-    if (!user) return
+    if (!user || loadAttempted.current) return
+    loadAttempted.current = true
     setLoading(true)
     try {
+      console.log("[RecipientManager] loading recipients...")
       const q = query(
         collection(db, "whatsapp_recipients"),
         where("userId", "==", user.uid),
         orderBy("createdAt", "desc")
       )
       const snap = await getDocs(q)
+      console.log("[RecipientManager] loaded", snap.docs.length, "recipients")
       setRecipients(snap.docs.map((doc) => ({ id: doc.id, phoneNumber: doc.data().phoneNumber, label: doc.data().label })))
-    } catch {
-      // silent
+    } catch (err) {
+      console.error("[RecipientManager] load error:", err)
     } finally {
       setLoading(false)
     }
@@ -79,6 +92,9 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
     setNewLabel("")
     setAdding(true)
 
+    console.log("[RecipientManager] addDoc starting...")
+    const startTime = Date.now()
+
     addDoc(collection(db, "whatsapp_recipients"), {
       userId: user.uid,
       phoneNumber: phone,
@@ -86,15 +102,19 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
       createdAt: serverTimestamp(),
     })
       .then((ref) => {
+        console.log("[RecipientManager] addDoc done in", Date.now() - startTime, "ms, id:", ref.id)
         setRecipients((prev) => prev.map((r) => (r.id === tempId ? { ...r, id: ref.id } : r)))
         toast.success("Recipient added!")
       })
       .catch((err) => {
-        console.error("Add recipient error:", err)
+        console.error("[RecipientManager] addDoc error:", err.name, err.message, err.code)
         setRecipients((prev) => prev.filter((r) => r.id !== tempId))
-        toast.error("Failed to save")
+        toast.error(err?.code || "Failed to save")
       })
-      .finally(() => setAdding(false))
+      .finally(() => {
+        console.log("[RecipientManager] addDoc finally")
+        setAdding(false)
+      })
   }
 
   const handleDelete = async (id: string) => {
@@ -102,10 +122,12 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
     setDeletingIds((prevSet) => new Set(prevSet).add(id))
     setRecipients((prevList) => prevList.filter((r) => r.id !== id))
     try {
+      console.log("[RecipientManager] deleteDoc starting...")
       await deleteDoc(doc(db, "whatsapp_recipients", id))
+      console.log("[RecipientManager] deleteDoc done")
       toast.success("Recipient removed")
     } catch (err) {
-      console.error("Delete recipient error:", err)
+      console.error("[RecipientManager] deleteDoc error:", err)
       setRecipients(prev)
       toast.error("Failed to delete")
     } finally {
@@ -126,10 +148,12 @@ export function RecipientManager({ compact, onSelect, selectedId }: RecipientMan
       )
     )
     try {
+      console.log("[RecipientManager] updateDoc starting...")
       await updateDoc(doc(db, "whatsapp_recipients", id), { phoneNumber: editPhone, label: editLabel })
+      console.log("[RecipientManager] updateDoc done")
       toast.success("Recipient updated!")
     } catch (err) {
-      console.error("Update recipient error:", err)
+      console.error("[RecipientManager] updateDoc error:", err)
       setRecipients(prev)
       toast.error("Failed to update")
     }
