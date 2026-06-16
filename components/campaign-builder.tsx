@@ -12,8 +12,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import {
   Sparkles, Check, Loader2, Copy, Download, Plus, Pencil, Trash2,
-  ArrowLeft, MessageCircle, ChevronDown, ChevronUp, Send,
+  ArrowLeft, MessageCircle, ChevronDown, ChevronUp, Send, LayoutTemplate,
 } from "lucide-react"
+import { funnelTemplates, followupTemplates, type CampaignTemplate } from "@/lib/prompts/whatsapp/templates"
 import { ContentInput } from "@/components/content-input"
 import { cn } from "@/lib/utils"
 import { PublishButton } from "@/components/publish-button"
@@ -215,6 +216,17 @@ export function CampaignBuilder() {
   const [saving, setSaving] = useState(false)
   const [expandedDay, setExpandedDay] = useState<number | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [showTemplates, setShowTemplates] = useState(false)
+
+  const applyTemplate = (template: CampaignTemplate) => {
+    setGoal(template.goal || "")
+    setAudience(template.audience || "default")
+    setAngle(template.angle || "educational")
+    setConfig({ ...template.config } as CampaignConfig)
+    setSourceContent(template.suggestedContent)
+    setShowTemplates(false)
+    toast.success(`Template "${template.name}" applied!`)
+  }
 
   // Load saved campaigns
   const loadCampaigns = useCallback(async () => {
@@ -593,6 +605,54 @@ export function CampaignBuilder() {
         <h1 className="text-xl sm:text-2xl font-bold text-heading">
           {editingCampaign ? "Edit Campaign" : "New Campaign"}
         </h1>
+      </div>
+
+      {/* Templates */}
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={() => setShowTemplates(!showTemplates)}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <LayoutTemplate className="size-3.5" />
+          {showTemplates ? "Hide templates" : "Start from a template"}
+        </button>
+        {showTemplates && (
+          <div className="mt-3 space-y-3">
+            <div>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Funnel Templates</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {funnelTemplates.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => applyTemplate(t)}
+                    className="rounded-lg border border-border bg-card p-2.5 text-left hover:border-green-300 hover:bg-green-50/30 transition-all cursor-pointer"
+                  >
+                    <p className="text-xs font-semibold text-foreground">{t.name}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{t.description}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Follow-up Templates</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {followupTemplates.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => applyTemplate(t)}
+                    className="rounded-lg border border-border bg-card p-2.5 text-left hover:border-teal-300 hover:bg-teal-50/30 transition-all cursor-pointer"
+                  >
+                    <p className="text-xs font-semibold text-foreground">{t.name}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{t.description}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Campaign Name */}
