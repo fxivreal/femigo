@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { bundle } from "@remotion/bundler"
+import { bundle, BundlerInternals } from "@remotion/bundler"
 import { renderMedia, getCompositions } from "@remotion/renderer"
 import path from "path"
 import fs from "fs/promises"
@@ -14,7 +14,23 @@ let cachedBundle: string | null = null
 
 async function getBundle(): Promise<string> {
   if (cachedBundle) return cachedBundle
-  const bundleLocation = await bundle({ entryPoint, webpackOverride: (c) => c })
+  const bundleLocation = await bundle({
+    entryPoint,
+    webpackOverride: (config) => {
+      const CopyPlugin = config.plugins?.find(
+        (p) => p.constructor.name === "CopyPlugin" || p.constructor.name === "CopyWebpackPlugin"
+      ) as { patterns?: { globOptions?: { ignore?: string[] } }[] } | undefined
+      if (CopyPlugin?.patterns) {
+        for (const pattern of CopyPlugin.patterns) {
+          pattern.globOptions = {
+            ...pattern.globOptions,
+            ignore: [...(pattern.globOptions?.ignore || []), "**/sw.js", "**/sw-*"],
+          }
+        }
+      }
+      return config
+    },
+  })
   cachedBundle = bundleLocation
   return bundleLocation
 }
