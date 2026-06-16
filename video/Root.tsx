@@ -1,4 +1,4 @@
-import { Composition } from "remotion"
+import { Composition, registerRoot } from "remotion"
 import { TextOverlay } from "./templates/TextOverlay"
 import { SlideShow } from "./templates/SlideShow"
 import { SocialClip } from "./templates/SocialClip"
@@ -52,3 +52,5 @@ export const RemotionRoot = () => {
     </>
   )
 }
+
+registerRoot(RemotionRoot)
