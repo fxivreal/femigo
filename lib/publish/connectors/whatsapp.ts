@@ -18,7 +18,7 @@ export const WhatsAppConnector: IPlatformConnector = {
       const result = await service.sendStatus(userId, {
         content,
         order: 0,
-      })
+      }, recipientPhone ?? undefined)
 
       if (result.status === "failed") {
         return { success: false, error: result.error || "Send failed" }
