@@ -18,6 +18,7 @@ import { funnelTemplates, followupTemplates, type CampaignTemplate } from "@/lib
 import { ContentInput } from "@/components/content-input"
 import { cn } from "@/lib/utils"
 import { PublishButton } from "@/components/publish-button"
+import { RenderVideoButton } from "@/components/render-video-button"
 
 // ── Types ──────────────────────────────────────────
 
@@ -814,6 +815,14 @@ export function CampaignBuilder() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">Campaign Timeline</h2>
             <div className="flex gap-1">
+              <RenderVideoButton
+                title={name || "Campaign"}
+                subtitle={timeline[0]?.content?.slice(0, 100)}
+                label="Render Video"
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs gap-1 text-purple-600 hover:text-purple-700"
+              />
               <PublishButton
                 items={timeline.map((t) => ({
                   content: t.content,
