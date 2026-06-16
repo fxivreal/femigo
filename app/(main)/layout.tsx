@@ -5,6 +5,7 @@ import { useEffect } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { FeedbackButton } from "@/components/feedback-button"
+import { ErrorBoundary } from "@/components/error-boundary"
 import { Skeleton } from "@/components/skeleton"
 
 export default function MainLayout({
@@ -45,7 +46,7 @@ export default function MainLayout({
     <div className="flex min-h-screen">
       <DashboardNav />
       <main className="flex-1 md:ml-60 pb-16 md:pb-0">
-        {children}
+        <ErrorBoundary>{children}</ErrorBoundary>
       </main>
       <FeedbackButton />
     </div>

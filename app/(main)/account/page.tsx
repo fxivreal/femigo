@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
-import { User, Mail, LogOut, Sparkles, Save, Mic, Users, Hash, Ban } from "lucide-react"
+import { User, Mail, LogOut, Sparkles, Save, Mic, Users, Hash, Ban, Loader2 } from "lucide-react"
+import { Skeleton } from "@/components/skeleton"
 
 function Avatar({ name, email }: { name: string; email?: string | null }) {
   const initial = (name || email || "U").charAt(0).toUpperCase()
@@ -163,58 +164,82 @@ export default function AccountPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
-              <Mic className="size-3" />
-              Tone
-            </label>
-            <Input
-              placeholder="e.g. Professional but approachable, witty, empathetic..."
-              value={bvTone}
-              onChange={(e) => setBvTone(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
-              <Users className="size-3" />
-              Target Audience
-            </label>
-            <Input
-              placeholder="e.g. Nigerian small business owners, Gen Z creators..."
-              value={bvAudience}
-              onChange={(e) => setBvAudience(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
-              <Hash className="size-3" />
-              Keywords to include
-            </label>
-            <Input
-              placeholder="e.g. affordable, local, reliable, customer-first..."
-              value={bvKeywords}
-              onChange={(e) => setBvKeywords(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
-              <Ban className="size-3" />
-              Words to avoid
-            </label>
-            <Input
-              placeholder="e.g. revolutionary, game-changer, synergy..."
-              value={bvAvoid}
-              onChange={(e) => setBvAvoid(e.target.value)}
-            />
-          </div>
-          <Button
-            onClick={handleSaveBrandVoice}
-            disabled={bvSaving}
-            className="bg-primary hover:bg-primary/80 text-white"
-          >
-            <Save className="size-4 mr-2" />
-            {bvSaving ? "Saving..." : "Save Brand Voice"}
-          </Button>
+          {bvLoading ? (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-28" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+              <Skeleton className="h-9 w-36" />
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
+                  <Mic className="size-3" />
+                  Tone
+                </label>
+                <Input
+                  placeholder="e.g. Professional but approachable, witty, empathetic..."
+                  value={bvTone}
+                  onChange={(e) => setBvTone(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
+                  <Users className="size-3" />
+                  Target Audience
+                </label>
+                <Input
+                  placeholder="e.g. Nigerian small business owners, Gen Z creators..."
+                  value={bvAudience}
+                  onChange={(e) => setBvAudience(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
+                  <Hash className="size-3" />
+                  Keywords to include
+                </label>
+                <Input
+                  placeholder="e.g. affordable, local, reliable, customer-first..."
+                  value={bvKeywords}
+                  onChange={(e) => setBvKeywords(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
+                  <Ban className="size-3" />
+                  Words to avoid
+                </label>
+                <Input
+                  placeholder="e.g. revolutionary, game-changer, synergy..."
+                  value={bvAvoid}
+                  onChange={(e) => setBvAvoid(e.target.value)}
+                />
+              </div>
+              <Button
+                onClick={handleSaveBrandVoice}
+                disabled={bvSaving}
+                className="bg-primary hover:bg-primary/80 text-white"
+              >
+                <Save className="size-4 mr-2" />
+                {bvSaving ? "Saving..." : "Save Brand Voice"}
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 
