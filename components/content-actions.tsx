@@ -14,6 +14,7 @@ import {
   Send,
 } from "lucide-react"
 import { PublishButton } from "@/components/publish-button"
+import { RenderVideoButton } from "@/components/render-video-button"
 
 interface ContentActionsProps {
   content: string
@@ -97,6 +98,15 @@ export function ContentActions({
         <Download className="size-3" />
         <span className="hidden sm:inline">Export</span>
       </Button>
+
+      <RenderVideoButton
+        title={content.slice(0, 100).replace(/\n/g, " ")}
+        subtitle={content.length > 100 ? content.slice(100, 200).replace(/\n/g, " ") : undefined}
+        label="Video"
+        size="sm"
+        variant="ghost"
+        className="h-7 text-xs gap-1 text-purple-600 hover:text-purple-700"
+      />
 
       {platform && platform.startsWith("whatsapp_") && (
         <PublishButton
