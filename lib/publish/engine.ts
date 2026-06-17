@@ -1,10 +1,12 @@
 import type { PublishJob, PublishQueueConfig, PublishResult, QueuedPublish } from "./types"
 import { getConnector, registerConnector } from "./connectors/index"
 import { WhatsAppConnector } from "./connectors/whatsapp"
+import { LinkedInConnector } from "./connectors/linkedin"
 import { incrementMetric } from "./metrics"
 import * as db from "./db"
 
 registerConnector(WhatsAppConnector)
+registerConnector(LinkedInConnector)
 
 export const DEFAULT_QUEUE_CONFIG: PublishQueueConfig = {
   interSendDelayMs: 3000,

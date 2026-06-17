@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RecipientManager } from "@/components/recipient-manager"
-import { MessageCircle, Link2, Globe, ExternalLink, Check, X } from "lucide-react"
+import { ConnectLinkedIn } from "@/components/connect-linkedin"
+import { MessageCircle, Link2, Globe, ExternalLink, Check } from "lucide-react"
 
 const platforms = [
   { id: "whatsapp", label: "WhatsApp", icon: MessageCircle, color: "text-green-600 bg-green-100", connected: true },
@@ -32,7 +32,8 @@ export default function ConnectionsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {platforms.map((p) => {
+            <ConnectLinkedIn />
+            {platforms.filter(p => p.id !== "linkedin").map((p) => {
               const Icon = p.icon
               return (
                 <div
