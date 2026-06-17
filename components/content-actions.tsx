@@ -102,10 +102,18 @@ export function ContentActions({
       <RenderVideoButton
         title={content.slice(0, 100).replace(/\n/g, " ")}
         subtitle={content.length > 100 ? content.slice(100, 200).replace(/\n/g, " ") : undefined}
-        label="Video"
+        type="card"
         size="sm"
         variant="ghost"
         className="h-7 text-xs gap-1 text-purple-600 hover:text-purple-700"
+      />
+      <RenderVideoButton
+        title={content.slice(0, 100).replace(/\n/g, " ")}
+        subtitle={content.length > 100 ? content.slice(100, 200).replace(/\n/g, " ") : undefined}
+        type="video"
+        size="sm"
+        variant="ghost"
+        className="h-7 text-xs gap-1 text-indigo-600 hover:text-indigo-700"
       />
 
       {platform && platform.startsWith("whatsapp_") && (
