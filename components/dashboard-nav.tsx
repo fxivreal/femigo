@@ -18,6 +18,8 @@ const navItems = [
   { href: "/account", label: "Account", icon: User },
 ]
 
+const mobileNavItems = navItems.slice(0, 5)
+
 export function DashboardNav() {
   const pathname = usePathname()
   const { user, signOut } = useAuth()
@@ -86,8 +88,8 @@ export function DashboardNav() {
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t bg-background/95 backdrop-blur-sm">
-        <div className="flex items-center justify-around h-14">
-          {navItems.map((item) => {
+        <div className="flex items-stretch h-14">
+          {mobileNavItems.map((item) => {
             const Icon = item.icon
             const active = pathname === item.href
             return (
@@ -95,17 +97,17 @@ export function DashboardNav() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 h-full w-full text-xs font-medium transition-all relative",
+                  "flex flex-col items-center justify-center gap-0.5 flex-1 text-[10px] font-medium transition-all relative",
                   active
                     ? "text-primary"
                     : "text-muted-foreground"
                 )}
               >
                 {active && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-primary" />
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-primary" />
                 )}
-                <Icon className="size-5" />
-                <span>{item.label}</span>
+                <Icon className="size-4.5" />
+                <span className="leading-tight">{item.label}</span>
               </Link>
             )
           })}
